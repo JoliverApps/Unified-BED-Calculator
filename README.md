@@ -12,7 +12,7 @@
 
 ## Overview
 
-This is a simple, static web application (HTML/JS/Tailwind CSS) that serves as the companion tool for the paper: *"A Postulate-Driven Framework for a Unified Biologically Effective Dose (BED)"* (or your paper's title).
+This is a simple, static web application (HTML/JS/Tailwind CSS) that serves as the companion tool for the paper: *"First-principles Resilience-Depletion (RD) model unifying BED from conventional to hypofractionated dose"*.
 
 The standard Linear-Quadratic (LQ) model fails to accurately predict cell survival at the high doses per fraction used in SBRT and SRS. This tool implements the survival model derived in our paper, which is based on the postulate of **proportional depletion of resilience**.
 
@@ -59,4 +59,4 @@ This approach provides a single, consistent method for comparing all fractionati
 
 ## License
 
-This project is licensed under the **MIT License**. See the [LICENSE.md](LICENSE.md)
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
