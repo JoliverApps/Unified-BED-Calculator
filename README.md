@@ -18,7 +18,7 @@ The standard Linear-Quadratic (LQ) model fails to accurately predict cell surviv
 
 This framework yields a single, unified Biologically Effective Dose (BED) that is valid across all dose regimes, from conventional fractionation to extreme hypofractionation. This calculator provides a practical, closed-form solution to find isoeffective dose schedules using this new model.
 
-
+![Screenshot of the Unified BED Calculator](uBED_app_v1.png)
 
 ## The Model
 
