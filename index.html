@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unified BED Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(','\\)'], ['$', '$']] },
+      options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+    };
+  </script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .error-message { color: #ef4444; font-size: 0.875rem; min-height: 1.25rem; transition: opacity .3s; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+    details > summary { cursor: pointer; }
+    /* Visual cue for invalid fields */
+    input[aria-invalid="true"] { border-color: #ef4444; }
+    input[aria-invalid="true"]:focus { --tw-ring-color: #ef4444; border-color: #ef4444; }
+  </style>
+</head>
+
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+  <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg" role="alert" aria-live="polite">
+      <p class="font-bold">Disclaimer</p>
+      <p class="text-sm">This is a non-validated, non-approved application intended solely to demonstrate the feasibility of the calculation presented in the associated paper. It must not be used for any clinical purpose. Usage is the sole responsibility of the end-user.</p>
+    </div>
+
+    <div class="text-center">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
+      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using \(\mathrm{BED}(D,n;b,c) = D-\frac{c}{b}\,n\Bigl(1-e^{-b D/n}\Bigr)\).</p>
+    </div>
+
+    <div class="space-y-2">
+      <h2 class="text-lg font-semibold text-slate-700">Cell Type</h2>
+      <div>
+        <div class="flex items-center justify-between gap-4">
+          <label for="cell-line-select" class="text-sm font-medium text-slate-600">Select cell line:</label>
+          <select id="cell-line-select" class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" aria-describedby="cell-help">
+            </select>
+        </div>
+        <p id="cell-help" class="text-xs text-slate-400 mt-1">
+          Choosing a cell line pre-fills parameters (a, b, c). Select “— Custom —” to enter your own b and c.
+        </p>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between gap-4">
+          <label for="param-a" class="text-sm font-medium text-slate-600">
+            Tail hazard scale \(a\) (1/Gy) <span class="text-slate-400 font-normal">(reference; not used in BED)</span>:
+          </label>
+          <input type="number" id="param-a" step="any" min="0" inputmode="decimal"
+                 class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed"
+                 placeholder="preset only" disabled aria-disabled="true" />
+        </div>
+        <span class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between gap-4">
+          <label for="param-b" class="text-sm font-medium text-slate-600">Sensitization rate \(b\) (1/Gy):</label>
+          <input type="number" id="param-b" step="any" min="0" inputmode="decimal"
+                 class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                 placeholder="e.g., 0.50" aria-invalid="false"/>
+        </div>
+        <span id="error-b" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between gap-4">
+          <label for="param-c" class="text-sm font-medium text-slate-600">
+            Effective resilience \(c\) (\(\le 1\); negatives allowed for heterogeneous populations):
+          </label>
+          <input type="number" id="param-c" step="any" max="1" inputmode="decimal"
+                 class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                 placeholder="e.g., 0.95 or -1.50" aria-invalid="false" />
+        </div>
+        <span id="error-c" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="space-y-4 p-4 border border-slate-200 rounded-lg">
+      <h2 class="text-lg font-semibold text-slate-700">Reference Scheme</h2>
+      <div class="space-y-4">
+        <div>
+          <div class="flex items-center justify-between gap-4">
+            <label for="dose-d1" class="text-sm font-medium text-slate-600">Total dose \(D_1\) (Gy):</label>
+            <input type="number" id="dose-d1" step="any" min="0" inputmode="decimal"
+                   class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                   placeholder="e.g., 60" aria-invalid="false" />
+          </div>
+          <span id="error-d1" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+        </div>
+        <div>
+          <div class="flex items-center justify-between gap-4">
+            <label for="fractions-n1" class="text-sm font-medium text-slate-600">Fractions \(n_1\):</label>
+            <input type="number" id="fractions-n1" step="1" min="1" inputmode="numeric"
+                   class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                   placeholder="e.g., 30" aria-invalid="false" />
+          </div>
+          <span id="error-n1" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-slate-200/60 mt-3">
+          <label class="text-sm font-medium text-slate-600">Dose per fraction \(d_1=D_1/n_1\):</label>
+          <span id="original-dpf" class="text-sm font-bold text-slate-700 h-5"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h2 class="text-lg font-semibold text-slate-700">Target Scheme</h2>
+      <div>
+        <div class="flex items-center justify-between gap-4">
+          <label for="fractions-n2" class="text-sm font-medium text-slate-600">Target fractions \(n_2\):</label>
+          <input type="number" id="fractions-n2" step="1" min="1" inputmode="numeric"
+                 class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                 placeholder="e.g., 5" aria-invalid="false" />
+        </div>
+        <span id="error-n2" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <button id="calculate-btn"
+            class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-transform transform active:scale-95">
+      Calculate New Equivalent Dose
+    </button>
+
+    <div id="result-container" class="bg-slate-50 border-t border-slate-200 pt-6 mt-6 hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+        <div>
+          <h3 class="text-lg font-semibold text-slate-700">Equivalent Total Dose \(D_2\)</h3>
+          <p id="result-text" class="text-3xl font-bold text-indigo-600 mt-2" aria-live="polite"></p>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-slate-700">New Dose per Fraction \(d_2=D_2/n_2\)</h3>
+          <p id="dose-per-fraction-text" class="text-3xl font-bold text-slate-600 mt-2" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <details class="mt-6">
+        <summary class="text-sm text-slate-600">Show details (BED, \(k\), Lambert-\(W\) argument)</summary>
+        <div class="mt-3 text-sm text-slate-700 space-y-1">
+          <div>BED\(_1\): <span id="dbg-bed1" class="font-mono"></span></div>
+          <div>\(k\): <span id="dbg-k" class="font-mono"></span></div>
+          <div>W argument \(z\): <span id="dbg-z" class="font-mono"></span></div>
+          <div>\(W_0(z)\): <span id="dbg-w" class="font-mono"></span></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
+      <p>This work is licensed under a <a href="https://creativecommons.org/licenses/by/4.0/deed.pt" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-600">Creative Commons Attribution 4.0 International License</a>.</p>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // MathJax helper + light debounce
+    let mjTimer = null;
+    function typesetDebounced() {
+      if (!window.MathJax || !MathJax.typesetPromise) return;
+      if (mjTimer) clearTimeout(mjTimer);
+      mjTimer = setTimeout(() => MathJax.typesetPromise(), 50);
+    }
+
+    // Inputs/Outputs
+    const aInput = document.getElementById('param-a'); // disabled (reference)
+    const bInput = document.getElementById('param-b');
+    const cInput = document.getElementById('param-c');
+
+    const d1Input = document.getElementById('dose-d1');
+    const n1Input = document.getElementById('fractions-n1');
+    const n2Input = document.getElementById('fractions-n2');
+    const allInputs = [aInput, bInput, cInput, d1Input, n1Input, n2Input];
+
+    const calculateBtn = document.getElementById('calculate-btn');
+    const resultContainer = document.getElementById('result-container');
+    const resultText = document.getElementById('result-text');
+    const dosePerFractionText = document.getElementById('dose-per-fraction-text');
+    const originalDpfLabel = document.getElementById('original-dpf');
+
+    const errB = document.getElementById('error-b');
+    const errC = document.getElementById('error-c');
+    const errD1 = document.getElementById('error-d1');
+    const errN1 = document.getElementById('error-n1');
+    const errN2 = document.getElementById('error-n2');
+    const allErrors = [errB, errC, errD1, errN1, errN2];
+
+    const cellLineSelect = document.getElementById('cell-line-select');
+
+    // Debug fields
+    const dbgBED1 = document.getElementById('dbg-bed1');
+    const dbgK = document.getElementById('dbg-k');
+    const dbgZ = document.getElementById('dbg-z');
+    const dbgW = document.getElementById('dbg-w');
+
+    // Populate dropdown (sorted)
+    function populateDropdown() {
+      cellLineSelect.innerHTML = '';
+      const optCustom = document.createElement('option');
+      optCustom.value = '';
+      optCustom.textContent = '— Custom —';
+      cellLineSelect.appendChild(optCustom);
+
+      Object.keys(CELL_LINE_SOURCE).sort().forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        cellLineSelect.appendChild(option);
+      });
+    }
+
+    function clearABC() {
+      aInput.value = '';
+      bInput.value = '';
+      cInput.value = '';
+    }
+
+    function populateInputsFromSelection() {
+      const name = cellLineSelect.value;
+      if (!name) { clearABC(); return; }
+      const p = CELL_LINE_SOURCE[name];
+      if (!p) return;
+      aInput.value = Number.isFinite(p.a) ? p.a.toFixed(6) : '';
+      bInput.value = Number.isFinite(p.b) ? p.b.toFixed(6) : '';
+      cInput.value = Number.isFinite(p.c) ? p.c.toFixed(6) : '';
+    }
+
+    // Lambert W0 (principal) using Halley's method
+    function lambertW0(z) {
+      const minZ = -1 / Math.E;
+      if (z < minZ - 1e-12) return NaN;
+      if (Math.abs(z - minZ) <= 1e-12) return -1;
+      if (Math.abs(z) < 1e-15) return 0;
+
+      let w;
+      if (z > Math.E)     w = Math.log(z) - Math.log(Math.log(z));
+      else if (z >= -0.3) w = z;
+      else                w = -0.9;
+
+      for (let i = 0; i < 100; i++) {
+        const ew  = Math.exp(w);
+        const wew = w * ew;
+        const f   = wew - z;
+        const fp  = ew * (w + 1);
+        if (Math.abs(fp) < 1e-14) { w += 1e-6; continue; }
+        const fpp = ew * (w + 2);
+        const denom = fp - (f * fpp) / (2 * fp);
+        const step  = f / denom;
+        const wNext = w - step;
+        if (Math.abs(wNext - w) < 1e-12) return wNext;
+        w = wNext;
+      }
+      return w;
+    }
+
+    function clearErrors() {
+      allErrors.forEach(e => e.textContent = '');
+      allInputs.forEach(input => input.setAttribute('aria-invalid', 'false'));
+    }
+
+    function validateInputs() {
+      clearErrors();
+      let ok = true;
+
+      const bVal = parseFloat(bInput.value);
+      if (!Number.isFinite(bVal) || bVal <= 0) {
+        errB.textContent = 'b must be a positive number.';
+        bInput.setAttribute('aria-invalid', 'true'); ok = false;
+      }
+
+      const cVal = parseFloat(cInput.value);
+      if (!Number.isFinite(cVal) || cVal > 1) {
+        errC.textContent = 'c must be a finite number ≤ 1 (negatives allowed for heterogeneous populations).';
+        cInput.setAttribute('aria-invalid', 'true'); ok = false;
+      }
+
+      const D1 = parseFloat(d1Input.value);
+      if (!Number.isFinite(D1) || D1 <= 0) {
+        errD1.textContent = 'Total dose must be a positive number.';
+        d1Input.setAttribute('aria-invalid', 'true'); ok = false;
+      }
+
+      const n1 = parseFloat(n1Input.value);
+      if (!Number.isFinite(n1) || n1 < 1 || !Number.isInteger(Number(n1))) {
+        errN1.textContent = 'Fractions n₁ must be a positive integer.';
+        n1Input.setAttribute('aria-invalid', 'true'); ok = false;
+      }
+
+      const n2 = parseFloat(n2Input.value);
+      if (!Number.isFinite(n2) || n2 < 1 || !Number.isInteger(Number(n2))) {
+        errN2.textContent = 'Target fractions n₂ must be a positive integer.';
+        n2Input.setAttribute('aria-invalid', 'true'); ok = false;
+      }
+
+      return ok;
+    }
+
+    function updateOriginalDpf() {
+      const D1 = parseFloat(d1Input.value);
+      const n1 = parseFloat(n1Input.value);
+      if (Number.isFinite(D1) && D1 > 0 && Number.isFinite(n1) && n1 > 0) {
+        originalDpfLabel.textContent = (D1 / n1).toFixed(4) + ' Gy';
+      } else {
+        originalDpfLabel.textContent = '';
+      }
+    }
+    d1Input.addEventListener('input', () => { updateOriginalDpf(); typesetDebounced(); });
+    n1Input.addEventListener('input', () => { updateOriginalDpf(); typesetDebounced(); });
+
+    const fmt = (x) => Number.isFinite(x) ? x.toFixed(6) : '—';
+
+    // Core computation (General model)
+    // BED(D,n;b,c) = D - (c/b) n (1 - e^{-b D/n})
+    // k = c + (b/n2) * BED1;  z = -c e^{-k};  D2 = (n2/b) * (k + W0(z))
+    function computeAndRender() {
+      resultContainer.classList.add('hidden');
+      if (!validateInputs()) { updateOriginalDpf(); return; }
+
+      const b = parseFloat(bInput.value);
+      const c = parseFloat(cInput.value);
+      const D1 = parseFloat(d1Input.value);
+      const n1 = parseFloat(n1Input.value);
+      const n2 = parseFloat(n2Input.value);
+
+      let BED1, k, z, w, D2;
+
+      if (Math.abs(c) < 1e-15) {
+        BED1 = D1;
+        k = (b / n2) * BED1;
+        z = 0; w = 0;
+        D2 = D1;
+      } else {
+        BED1 = D1 - (c / b) * n1 * (1 - Math.exp(-b * D1 / n1));
+        k = c + (b / n2) * BED1;
+        z = -c * Math.exp(-k);
+        w = lambertW0(z);
+        if (!Number.isFinite(w)) {
+          resultText.textContent = 'Calculation error';
+          dosePerFractionText.textContent = 'Lambert W domain error. Adjust b, c, or n₂.';
+          resultContainer.classList.remove('hidden');
+          dbgBED1.textContent = fmt(BED1);
+          dbgK.textContent = fmt(k);
+          dbgZ.textContent = fmt(z);
+          dbgW.textContent = fmt(w);
+          typesetDebounced();
+          return;
+        }
+        D2 = (n2 / b) * (k + w);
+      }
+
+      // Robustness: guard against tiny negative outputs from round-off
+      if (!Number.isFinite(D2)) {
+        resultText.textContent = 'Calculation error';
+        dosePerFractionText.textContent = 'Check inputs.';
+        resultContainer.classList.remove('hidden');
+        dbgBED1.textContent = fmt(BED1);
+        dbgK.textContent = fmt(k);
+        dbgZ.textContent = fmt(z);
+        dbgW.textContent = fmt(w);
+        typesetDebounced();
+        return;
+      }
+      if (D2 < 0 && D2 > -1e-10) D2 = 0;
+
+      const dosePerFraction = D2 / n2;
+
+      resultText.textContent = `${D2.toFixed(4)} Gy`;
+      dosePerFractionText.textContent = `${dosePerFraction.toFixed(4)} Gy`;
+      resultContainer.classList.remove('hidden');
+
+      // Diagnostics
+      dbgBED1.textContent = fmt(BED1);
+      dbgK.textContent = fmt(k);
+      dbgZ.textContent = fmt(z);
+      dbgW.textContent = fmt(w);
+
+      typesetDebounced();
+    }
+
+    // Wire up
+    calculateBtn.addEventListener('click', computeAndRender);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Enter') computeAndRender(); });
+
+    // If b/c are edited, clear the preset dropdown selection
+    [bInput, cInput].forEach(input => {
+      input.addEventListener('input', () => { cellLineSelect.value = ""; });
+    });
+
+    cellLineSelect.addEventListener('change', () => { populateInputsFromSelection(); typesetDebounced(); });
+
+    // Init
+    populateDropdown();
+    cellLineSelect.value = "";           // Default to Custom
+    populateInputsFromSelection();
+    updateOriginalDpf();
+
+    typesetDebounced();
+  });
+  </script>
+
+  <script>
+    // Units: a [1/Gy], b [1/Gy], c ≤ 1 (negative allowed)
+    // Central values from the filtered-parameter table.
+    const CELL_LINE_SOURCE = {
+      "A549 (lung, adenocarcinoma)":  { a: 0.445, b: 0.48,   c: 0.78  },
+      "CHO-K1 (hamster ovary)":       { a: 0.909, b: 0.241,  c: 0.944 },
+      "T-47D (breast, epithelial)":   { a: 1.524, b: 0.0405, c: 0.881 },
+      "V79-379A (hamster)":           { a: 1.71,  b: 0.076,  c: 0.827 },
+      "XRS5 (CHO mutant, biphasic)":  { a: 0.53,  b: 0.65,   c: -3.98 },
+      "XRS6 (CHO mutant, biphasic)":  { a: 0.697, b: 1.64,   c: -1.47 }
+    };
+  </script>
+
+</body>
+</html>
