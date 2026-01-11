@@ -41,7 +41,7 @@
 
     <div class="text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using \(\mathrm{BED}(D,n;b,c) = D-\frac{c}{b}\,n\Bigl(1-e^{-b D/n}\Bigr)\).</p>
+      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using \(\mathrm{BED}(D,n;b,c) = \frac{D}{1-c} - \frac{c}{b(1-c)}\,n\Bigl(1-e^{-b D/n}\Bigr)\).</p>
     </div>
 
     <div class="space-y-2">
@@ -82,9 +82,9 @@
       <div>
         <div class="flex items-center justify-between gap-4">
           <label for="param-c" class="text-sm font-medium text-slate-600">
-            Effective resilience \(c\) (\(\le 1\); negatives allowed for heterogeneous populations):
+            Effective resilience \(c\) (\(< 1\); negatives allowed for heterogeneous populations):
           </label>
-          <input type="number" id="param-c" step="any" max="1" inputmode="decimal"
+          <input type="number" id="param-c" step="any" max="0.999999" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                  placeholder="e.g., 0.95 or -1.50" aria-invalid="false" />
         </div>
@@ -283,8 +283,8 @@
       }
 
       const cVal = parseFloat(cInput.value);
-      if (!Number.isFinite(cVal) || cVal > 1) {
-        errC.textContent = 'c must be a finite number ≤ 1 (negatives allowed for heterogeneous populations).';
+      if (!Number.isFinite(cVal) || cVal >= 1) {
+        errC.textContent = 'c must be a finite number < 1 (negatives allowed).';
         cInput.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
@@ -323,9 +323,9 @@
 
     const fmt = (x) => Number.isFinite(x) ? x.toFixed(6) : '—';
 
-    // Core computation (General model)
-    // BED(D,n;b,c) = D - (c/b) n (1 - e^{-b D/n})
-    // k = c + (b/n2) * BED1;  z = -c e^{-k};  D2 = (n2/b) * (k + W0(z))
+    // Core computation (Revised Normalization)
+    // BED = (D / (1-c)) - (c / (b*(1-c))) * n * (1 - e^(-b*D/n))
+    // K = c + (b*(1-c)/n2) * BED
     function computeAndRender() {
       resultContainer.classList.add('hidden');
       if (!validateInputs()) { updateOriginalDpf(); return; }
@@ -337,15 +337,22 @@
       const n2 = parseFloat(n2Input.value);
 
       let BED1, k, z, w, D2;
+      const oneMinusC = 1 - c;
 
       if (Math.abs(c) < 1e-15) {
+        // Limit case c -> 0: BED reduces to D.
         BED1 = D1;
         k = (b / n2) * BED1;
         z = 0; w = 0;
         D2 = D1;
       } else {
-        BED1 = D1 - (c / b) * n1 * (1 - Math.exp(-b * D1 / n1));
-        k = c + (b / n2) * BED1;
+        // Standard case (c != 0, c < 1)
+        // Normalized BED formula
+        BED1 = (D1 / oneMinusC) - (c / (b * oneMinusC)) * n1 * (1 - Math.exp(-b * D1 / n1));
+        
+        // Revised constant K for isoeffect solution
+        k = c + (b * oneMinusC / n2) * BED1;
+        
         z = -c * Math.exp(-k);
         w = lambertW0(z);
         if (!Number.isFinite(w)) {
@@ -404,7 +411,7 @@
 
     // Init
     populateDropdown();
-    cellLineSelect.value = "";           // Default to Custom
+    cellLineSelect.value = "";            // Default to Custom
     populateInputsFromSelection();
     updateOriginalDpf();
 
@@ -413,7 +420,7 @@
   </script>
 
   <script>
-    // Units: a [1/Gy], b [1/Gy], c ≤ 1 (negative allowed)
+    // Units: a [1/Gy], b [1/Gy], c < 1 (negative allowed)
     // Central values from the filtered-parameter table.
     const CELL_LINE_SOURCE = {
       "A549 (lung, adenocarcinoma)":  { a: 0.445, b: 0.48,   c: 0.78  },
