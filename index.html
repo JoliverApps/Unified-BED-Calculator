@@ -41,7 +41,7 @@
 
     <div class="text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using \(\mathrm{BED}(D,n;b,c) = \frac{D}{1-c} - \frac{c}{b(1-c)}\,n\Bigl(1-e^{-b D/n}\Bigr)\).</p>
+      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using \(\mathrm{BED}(D,n;a,b) = \frac{D}{1-a} - \frac{a}{b(1-a)}\,n\Bigl(1-e^{-b D/n}\Bigr)\).</p>
     </div>
 
     <div class="space-y-2">
@@ -53,16 +53,16 @@
             </select>
         </div>
         <p id="cell-help" class="text-xs text-slate-400 mt-1">
-          Choosing a cell line pre-fills parameters (a, b, c). Select “— Custom —” to enter your own b and c.
+          Choosing a cell line pre-fills parameters (a, b, c). Select “— Custom —” to enter your own b and a.
         </p>
       </div>
 
       <div>
         <div class="flex items-center justify-between gap-4">
-          <label for="param-a" class="text-sm font-medium text-slate-600">
-            Tail hazard scale \(a\) (1/Gy) <span class="text-slate-400 font-normal">(reference; not used in BED)</span>:
+          <label for="param-c" class="text-sm font-medium text-slate-600">
+            Tail hazard scale \(c\) (1/Gy) <span class="text-slate-400 font-normal">(reference; not used in BED)</span>:
           </label>
-          <input type="number" id="param-a" step="any" min="0" inputmode="decimal"
+          <input type="number" id="param-c" step="any" min="0" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed"
                  placeholder="preset only" disabled aria-disabled="true" />
         </div>
@@ -81,14 +81,14 @@
 
       <div>
         <div class="flex items-center justify-between gap-4">
-          <label for="param-c" class="text-sm font-medium text-slate-600">
-            Effective resilience \(c\) (\(< 1\); negatives allowed for heterogeneous populations):
+          <label for="param-a" class="text-sm font-medium text-slate-600">
+            Effective resilience \(a\) (\(< 1\); negatives allowed for heterogeneous populations):
           </label>
-          <input type="number" id="param-c" step="any" max="0.999999" inputmode="decimal"
+          <input type="number" id="param-a" step="any" max="0.999999" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                  placeholder="e.g., 0.95 or -1.50" aria-invalid="false" />
         </div>
-        <span id="error-c" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+        <span id="error-a" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
       </div>
     </div>
 
@@ -151,10 +151,10 @@
       </div>
 
       <details class="mt-6">
-        <summary class="text-sm text-slate-600">Show details (BED, \(k\), Lambert-\(W\) argument)</summary>
+        <summary class="text-sm text-slate-600">Show details (BED, \(K\), Lambert-\(W\) argument)</summary>
         <div class="mt-3 text-sm text-slate-700 space-y-1">
           <div>BED\(_1\): <span id="dbg-bed1" class="font-mono"></span></div>
-          <div>\(k\): <span id="dbg-k" class="font-mono"></span></div>
+          <div>\(K\): <span id="dbg-k" class="font-mono"></span></div>
           <div>W argument \(z\): <span id="dbg-z" class="font-mono"></span></div>
           <div>\(W_0(z)\): <span id="dbg-w" class="font-mono"></span></div>
         </div>
@@ -177,9 +177,10 @@
     }
 
     // Inputs/Outputs
-    const aInput = document.getElementById('param-a'); // disabled (reference)
+    // cInput is now the reference (slope), aInput is the resilience (active)
+    const cInput = document.getElementById('param-c'); // disabled
     const bInput = document.getElementById('param-b');
-    const cInput = document.getElementById('param-c');
+    const aInput = document.getElementById('param-a'); // active
 
     const d1Input = document.getElementById('dose-d1');
     const n1Input = document.getElementById('fractions-n1');
@@ -193,11 +194,11 @@
     const originalDpfLabel = document.getElementById('original-dpf');
 
     const errB = document.getElementById('error-b');
-    const errC = document.getElementById('error-c');
+    const errA = document.getElementById('error-a'); // previously errC
     const errD1 = document.getElementById('error-d1');
     const errN1 = document.getElementById('error-n1');
     const errN2 = document.getElementById('error-n2');
-    const allErrors = [errB, errC, errD1, errN1, errN2];
+    const allErrors = [errB, errA, errD1, errN1, errN2];
 
     const cellLineSelect = document.getElementById('cell-line-select');
 
@@ -282,10 +283,10 @@
         bInput.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
-      const cVal = parseFloat(cInput.value);
-      if (!Number.isFinite(cVal) || cVal >= 1) {
-        errC.textContent = 'c must be a finite number < 1 (negatives allowed).';
-        cInput.setAttribute('aria-invalid', 'true'); ok = false;
+      const aVal = parseFloat(aInput.value);
+      if (!Number.isFinite(aVal) || aVal >= 1) {
+        errA.textContent = 'a must be a finite number < 1 (negatives allowed).';
+        aInput.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
       const D1 = parseFloat(d1Input.value);
@@ -323,41 +324,42 @@
 
     const fmt = (x) => Number.isFinite(x) ? x.toFixed(6) : '—';
 
-    // Core computation (Revised Normalization)
-    // BED = (D / (1-c)) - (c / (b*(1-c))) * n * (1 - e^(-b*D/n))
-    // K = c + (b*(1-c)/n2) * BED
+    // Core computation (Revised Normalization with A and B)
+    // BED = (D / (1-a)) - (a / (b*(1-a))) * n * (1 - e^(-b*D/n))
+    // K = a + (b*(1-a)/n2) * BED
+    // D2 = (n2/b) * (K + W0(-a * e^-K))
     function computeAndRender() {
       resultContainer.classList.add('hidden');
       if (!validateInputs()) { updateOriginalDpf(); return; }
 
       const b = parseFloat(bInput.value);
-      const c = parseFloat(cInput.value);
+      const a = parseFloat(aInput.value);
       const D1 = parseFloat(d1Input.value);
       const n1 = parseFloat(n1Input.value);
       const n2 = parseFloat(n2Input.value);
 
       let BED1, k, z, w, D2;
-      const oneMinusC = 1 - c;
+      const oneMinusA = 1 - a;
 
-      if (Math.abs(c) < 1e-15) {
-        // Limit case c -> 0: BED reduces to D.
+      if (Math.abs(a) < 1e-15) {
+        // Limit case a -> 0: BED reduces to D.
         BED1 = D1;
         k = (b / n2) * BED1;
         z = 0; w = 0;
         D2 = D1;
       } else {
-        // Standard case (c != 0, c < 1)
-        // Normalized BED formula
-        BED1 = (D1 / oneMinusC) - (c / (b * oneMinusC)) * n1 * (1 - Math.exp(-b * D1 / n1));
+        // Standard case (a != 0, a < 1)
+        // Normalized BED formula using resilience 'a'
+        BED1 = (D1 / oneMinusA) - (a / (b * oneMinusA)) * n1 * (1 - Math.exp(-b * D1 / n1));
         
         // Revised constant K for isoeffect solution
-        k = c + (b * oneMinusC / n2) * BED1;
+        k = a + (b * oneMinusA / n2) * BED1;
         
-        z = -c * Math.exp(-k);
+        z = -a * Math.exp(-k);
         w = lambertW0(z);
         if (!Number.isFinite(w)) {
           resultText.textContent = 'Calculation error';
-          dosePerFractionText.textContent = 'Lambert W domain error. Adjust b, c, or n₂.';
+          dosePerFractionText.textContent = 'Lambert W domain error. Adjust parameters.';
           resultContainer.classList.remove('hidden');
           dbgBED1.textContent = fmt(BED1);
           dbgK.textContent = fmt(k);
@@ -402,8 +404,8 @@
     calculateBtn.addEventListener('click', computeAndRender);
     document.addEventListener('keydown', (e) => { if (e.key === 'Enter') computeAndRender(); });
 
-    // If b/c are edited, clear the preset dropdown selection
-    [bInput, cInput].forEach(input => {
+    // If inputs are edited, clear the preset dropdown selection
+    [bInput, aInput].forEach(input => {
       input.addEventListener('input', () => { cellLineSelect.value = ""; });
     });
 
@@ -420,18 +422,17 @@
   </script>
 
   <script>
-    // Units: a [1/Gy], b [1/Gy], c < 1 (negative allowed)
-    // Central values from the filtered-parameter table.
+    // Units: c [1/Gy] (reference), b [1/Gy], a < 1 (active resilience)
+    // Keys have been swapped: the dimensionless value is now 'a', the slope is now 'c'.
     const CELL_LINE_SOURCE = {
-      "A549 (lung, adenocarcinoma)":  { a: 0.445, b: 0.48,   c: 0.78  },
-      "CHO-K1 (hamster ovary)":       { a: 0.909, b: 0.241,  c: 0.944 },
-      "T-47D (breast, epithelial)":   { a: 1.524, b: 0.0405, c: 0.881 },
-      "V79-379A (hamster)":           { a: 1.71,  b: 0.076,  c: 0.827 },
-      "XRS5 (CHO mutant, biphasic)":  { a: 0.53,  b: 0.65,   c: -3.98 },
-      "XRS6 (CHO mutant, biphasic)":  { a: 0.697, b: 1.64,   c: -1.47 }
+      "A549 (lung, adenocarcinoma)":  { c: 0.445, b: 0.48,   a: 0.78  },
+      "CHO-K1 (hamster ovary)":       { c: 0.909, b: 0.241,  a: 0.944 },
+      "T-47D (breast, epithelial)":   { c: 1.524, b: 0.0405, a: 0.881 },
+      "V79-379A (hamster)":           { c: 1.71,  b: 0.076,  a: 0.827 },
+      "XRS5 (CHO mutant, biphasic)":  { c: 0.53,  b: 0.65,   a: -3.98 },
+      "XRS6 (CHO mutant, biphasic)":  { c: 0.697, b: 1.64,   a: -1.47 }
     };
   </script>
 
 </body>
-
 </html>
