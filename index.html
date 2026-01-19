@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Unified BED Calculator</title>
+  <title>Unified BED Calculator (RD Framework)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -41,11 +41,14 @@
 
     <div class="text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using \(\mathrm{BED}(D,n;a,b) = \frac{D}{1-a} - \frac{a}{b(1-a)}\,n\Bigl(1-e^{-b D/n}\Bigr)\).</p>
+      <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using the RD framework:</p>
+      <div class="my-3 text-sm overflow-x-auto">
+        $$ \mathrm{BED}(D,n;r_0,s) = \frac{D}{1-r_0} - \frac{r_0}{s(1-r_0)}\,n\Bigl(1-e^{-s D/n}\Bigr) $$
+      </div>
     </div>
 
     <div class="space-y-2">
-      <h2 class="text-lg font-semibold text-slate-700">Cell Type</h2>
+      <h2 class="text-lg font-semibold text-slate-700">Cell Parameters</h2>
       <div>
         <div class="flex items-center justify-between gap-4">
           <label for="cell-line-select" class="text-sm font-medium text-slate-600">Select cell line:</label>
@@ -53,16 +56,16 @@
             </select>
         </div>
         <p id="cell-help" class="text-xs text-slate-400 mt-1">
-          Choosing a cell line pre-fills parameters (a, b, c). Select “— Custom —” to enter your own b and a.
+          Choosing a cell line pre-fills parameters (r₀, s, k). Select “— Custom —” to enter your own.
         </p>
       </div>
 
       <div>
         <div class="flex items-center justify-between gap-4">
-          <label for="param-c" class="text-sm font-medium text-slate-600">
-            Tail hazard scale \(c\) (1/Gy) <span class="text-slate-400 font-normal">(reference; not used in BED)</span>:
+          <label for="param-k" class="text-sm font-medium text-slate-600">
+            Killing efficiency \(k\) (1/Gy) <span class="text-slate-400 font-normal">(ref only)</span>:
           </label>
-          <input type="number" id="param-c" step="any" min="0" inputmode="decimal"
+          <input type="number" id="param-k" step="any" min="0" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed"
                  placeholder="preset only" disabled aria-disabled="true" />
         </div>
@@ -71,29 +74,29 @@
 
       <div>
         <div class="flex items-center justify-between gap-4">
-          <label for="param-b" class="text-sm font-medium text-slate-600">Sensitization rate \(b\) (1/Gy):</label>
-          <input type="number" id="param-b" step="any" min="0" inputmode="decimal"
+          <label for="param-s" class="text-sm font-medium text-slate-600">Sensitization rate \(s\) (1/Gy):</label>
+          <input type="number" id="param-s" step="any" min="0" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                  placeholder="e.g., 0.50" aria-invalid="false"/>
         </div>
-        <span id="error-b" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+        <span id="error-s" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
       </div>
 
       <div>
         <div class="flex items-center justify-between gap-4">
-          <label for="param-a" class="text-sm font-medium text-slate-600">
-            Effective resilience \(a\) (\(< 1\); negatives allowed for heterogeneous populations):
+          <label for="param-r0" class="text-sm font-medium text-slate-600">
+            Initial resilience \(r_0\) (\(< 1\); negatives allowed):
           </label>
-          <input type="number" id="param-a" step="any" max="0.999999" inputmode="decimal"
+          <input type="number" id="param-r0" step="any" max="0.999999" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                  placeholder="e.g., 0.95 or -1.50" aria-invalid="false" />
         </div>
-        <span id="error-a" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+        <span id="error-r0" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
       </div>
     </div>
 
     <div class="space-y-4 p-4 border border-slate-200 rounded-lg">
-      <h2 class="text-lg font-semibold text-slate-700">Reference Scheme</h2>
+      <h2 class="text-lg font-semibold text-slate-700">Reference Schedule</h2>
       <div class="space-y-4">
         <div>
           <div class="flex items-center justify-between gap-4">
@@ -121,7 +124,7 @@
     </div>
 
     <div class="space-y-2">
-      <h2 class="text-lg font-semibold text-slate-700">Target Scheme</h2>
+      <h2 class="text-lg font-semibold text-slate-700">Target Schedule</h2>
       <div>
         <div class="flex items-center justify-between gap-4">
           <label for="fractions-n2" class="text-sm font-medium text-slate-600">Target fractions \(n_2\):</label>
@@ -177,15 +180,15 @@
     }
 
     // Inputs/Outputs
-    // cInput is now the reference (slope), aInput is the resilience (active)
-    const cInput = document.getElementById('param-c'); // disabled
-    const bInput = document.getElementById('param-b');
-    const aInput = document.getElementById('param-a'); // active
+    // kInput is the killing efficiency (reference), sInput is sensitization, r0Input is initial resilience
+    const kInput = document.getElementById('param-k'); // disabled
+    const sInput = document.getElementById('param-s');
+    const r0Input = document.getElementById('param-r0'); 
 
     const d1Input = document.getElementById('dose-d1');
     const n1Input = document.getElementById('fractions-n1');
     const n2Input = document.getElementById('fractions-n2');
-    const allInputs = [aInput, bInput, cInput, d1Input, n1Input, n2Input];
+    const allInputs = [r0Input, sInput, kInput, d1Input, n1Input, n2Input];
 
     const calculateBtn = document.getElementById('calculate-btn');
     const resultContainer = document.getElementById('result-container');
@@ -193,12 +196,12 @@
     const dosePerFractionText = document.getElementById('dose-per-fraction-text');
     const originalDpfLabel = document.getElementById('original-dpf');
 
-    const errB = document.getElementById('error-b');
-    const errA = document.getElementById('error-a'); // previously errC
+    const errS = document.getElementById('error-s');
+    const errR0 = document.getElementById('error-r0'); 
     const errD1 = document.getElementById('error-d1');
     const errN1 = document.getElementById('error-n1');
     const errN2 = document.getElementById('error-n2');
-    const allErrors = [errB, errA, errD1, errN1, errN2];
+    const allErrors = [errS, errR0, errD1, errN1, errN2];
 
     const cellLineSelect = document.getElementById('cell-line-select');
 
@@ -224,20 +227,20 @@
       });
     }
 
-    function clearABC() {
-      aInput.value = '';
-      bInput.value = '';
-      cInput.value = '';
+    function clearParams() {
+      r0Input.value = '';
+      sInput.value = '';
+      kInput.value = '';
     }
 
     function populateInputsFromSelection() {
       const name = cellLineSelect.value;
-      if (!name) { clearABC(); return; }
+      if (!name) { clearParams(); return; }
       const p = CELL_LINE_SOURCE[name];
       if (!p) return;
-      aInput.value = Number.isFinite(p.a) ? p.a.toFixed(6) : '';
-      bInput.value = Number.isFinite(p.b) ? p.b.toFixed(6) : '';
-      cInput.value = Number.isFinite(p.c) ? p.c.toFixed(6) : '';
+      r0Input.value = Number.isFinite(p.r0) ? p.r0.toFixed(6) : '';
+      sInput.value = Number.isFinite(p.s) ? p.s.toFixed(6) : '';
+      kInput.value = Number.isFinite(p.k) ? p.k.toFixed(6) : '';
     }
 
     // Lambert W0 (principal) using Halley's method
@@ -277,16 +280,16 @@
       clearErrors();
       let ok = true;
 
-      const bVal = parseFloat(bInput.value);
-      if (!Number.isFinite(bVal) || bVal <= 0) {
-        errB.textContent = 'b must be a positive number.';
-        bInput.setAttribute('aria-invalid', 'true'); ok = false;
+      const sVal = parseFloat(sInput.value);
+      if (!Number.isFinite(sVal) || sVal <= 0) {
+        errS.textContent = 'Sensitization rate s must be a positive number.';
+        sInput.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
-      const aVal = parseFloat(aInput.value);
-      if (!Number.isFinite(aVal) || aVal >= 1) {
-        errA.textContent = 'a must be a finite number < 1 (negatives allowed).';
-        aInput.setAttribute('aria-invalid', 'true'); ok = false;
+      const r0Val = parseFloat(r0Input.value);
+      if (!Number.isFinite(r0Val) || r0Val >= 1) {
+        errR0.textContent = 'r₀ must be a finite number < 1 (negatives allowed).';
+        r0Input.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
       const D1 = parseFloat(d1Input.value);
@@ -324,51 +327,50 @@
 
     const fmt = (x) => Number.isFinite(x) ? x.toFixed(6) : '—';
 
-    // Core computation (Revised Normalization with A and B)
-    // BED = (D / (1-a)) - (a / (b*(1-a))) * n * (1 - e^(-b*D/n))
-    // K = a + (b*(1-a)/n2) * BED
-    // D2 = (n2/b) * (K + W0(-a * e^-K))
+    // Core computation (New Parametrization: r0, s, k)
+    // BED = (D / (1-r0)) - (r0 / (s*(1-r0))) * n * (1 - e^(-s*D/n))
+    // K_iso = r0 + (s*(1-r0)/n2) * BED1
+    // D2 = (n2/s) * (K_iso + W0(-r0 * e^-K_iso))
     function computeAndRender() {
       resultContainer.classList.add('hidden');
       if (!validateInputs()) { updateOriginalDpf(); return; }
 
-      const b = parseFloat(bInput.value);
-      const a = parseFloat(aInput.value);
+      const s = parseFloat(sInput.value);
+      const r0 = parseFloat(r0Input.value);
       const D1 = parseFloat(d1Input.value);
       const n1 = parseFloat(n1Input.value);
       const n2 = parseFloat(n2Input.value);
 
-      let BED1, k, z, w, D2;
-      const oneMinusA = 1 - a;
+      let BED1, K_iso, z, w, D2;
+      const oneMinusR0 = 1 - r0;
 
-      if (Math.abs(a) < 1e-15) {
-        // Limit case a -> 0: BED reduces to D.
+      if (Math.abs(r0) < 1e-15) {
+        // Limit case r0 -> 0: BED reduces to D.
         BED1 = D1;
-        k = (b / n2) * BED1;
+        K_iso = (s / n2) * BED1;
         z = 0; w = 0;
         D2 = D1;
       } else {
-        // Standard case (a != 0, a < 1)
-        // Normalized BED formula using resilience 'a'
-        BED1 = (D1 / oneMinusA) - (a / (b * oneMinusA)) * n1 * (1 - Math.exp(-b * D1 / n1));
+        // Standard case (r0 != 0, r0 < 1)
+        BED1 = (D1 / oneMinusR0) - (r0 / (s * oneMinusR0)) * n1 * (1 - Math.exp(-s * D1 / n1));
         
-        // Revised constant K for isoeffect solution
-        k = a + (b * oneMinusA / n2) * BED1;
+        K_iso = r0 + (s * oneMinusR0 / n2) * BED1;
         
-        z = -a * Math.exp(-k);
+        z = -r0 * Math.exp(-K_iso);
         w = lambertW0(z);
+        
         if (!Number.isFinite(w)) {
           resultText.textContent = 'Calculation error';
           dosePerFractionText.textContent = 'Lambert W domain error. Adjust parameters.';
           resultContainer.classList.remove('hidden');
           dbgBED1.textContent = fmt(BED1);
-          dbgK.textContent = fmt(k);
+          dbgK.textContent = fmt(K_iso);
           dbgZ.textContent = fmt(z);
           dbgW.textContent = fmt(w);
           typesetDebounced();
           return;
         }
-        D2 = (n2 / b) * (k + w);
+        D2 = (n2 / s) * (K_iso + w);
       }
 
       // Robustness: guard against tiny negative outputs from round-off
@@ -377,7 +379,7 @@
         dosePerFractionText.textContent = 'Check inputs.';
         resultContainer.classList.remove('hidden');
         dbgBED1.textContent = fmt(BED1);
-        dbgK.textContent = fmt(k);
+        dbgK.textContent = fmt(K_iso);
         dbgZ.textContent = fmt(z);
         dbgW.textContent = fmt(w);
         typesetDebounced();
@@ -393,7 +395,7 @@
 
       // Diagnostics
       dbgBED1.textContent = fmt(BED1);
-      dbgK.textContent = fmt(k);
+      dbgK.textContent = fmt(K_iso);
       dbgZ.textContent = fmt(z);
       dbgW.textContent = fmt(w);
 
@@ -405,7 +407,7 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Enter') computeAndRender(); });
 
     // If inputs are edited, clear the preset dropdown selection
-    [bInput, aInput].forEach(input => {
+    [sInput, r0Input].forEach(input => {
       input.addEventListener('input', () => { cellLineSelect.value = ""; });
     });
 
@@ -422,15 +424,15 @@
   </script>
 
   <script>
-    // Units: c [1/Gy] (reference), b [1/Gy], a < 1 (active resilience)
-    // Keys have been swapped: the dimensionless value is now 'a', the slope is now 'c'.
+    // Units: k [1/Gy] (killing efficiency), s [1/Gy] (sensitization), r0 < 1 (initial resilience)
+    // Mapping: previous c -> k, b -> s, a -> r0
     const CELL_LINE_SOURCE = {
-      "A549 (lung, adenocarcinoma)":  { c: 0.445, b: 0.48,   a: 0.78  },
-      "CHO-K1 (hamster ovary)":       { c: 0.909, b: 0.241,  a: 0.944 },
-      "T-47D (breast, epithelial)":   { c: 1.524, b: 0.0405, a: 0.881 },
-      "V79-379A (hamster)":           { c: 1.71,  b: 0.076,  a: 0.827 },
-      "XRS5 (CHO mutant, biphasic)":  { c: 0.53,  b: 0.65,   a: -3.98 },
-      "XRS6 (CHO mutant, biphasic)":  { c: 0.697, b: 1.64,   a: -1.47 }
+      "A549 (lung, adenocarcinoma)":  { k: 0.445, s: 0.48,   r0: 0.78  },
+      "CHO-K1 (hamster ovary)":       { k: 0.909, s: 0.241,  r0: 0.944 },
+      "T-47D (breast, epithelial)":   { k: 1.524, s: 0.0405, r0: 0.881 },
+      "V79-379A (hamster)":           { k: 1.71,  s: 0.076,  r0: 0.827 },
+      "XRS5 (CHO mutant, biphasic)":  { k: 0.53,  s: 0.65,   r0: -3.98 },
+      "XRS6 (CHO mutant, biphasic)":  { k: 0.697, s: 1.64,   r0: -1.47 }
     };
   </script>
 
