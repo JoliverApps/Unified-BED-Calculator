@@ -43,7 +43,7 @@
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
       <p class="text-slate-500 mt-2">Compute equivalent dose for a new fractionation scheme using the RD framework:</p>
       <div class="my-3 text-sm overflow-x-auto">
-        $$ \mathrm{BED}(D,n;r_0,s) = \frac{D}{1-r_0} - \frac{r_0}{s(1-r_0)}\,n\Bigl(1-e^{-s D/n}\Bigr) $$
+        $$ \mathrm{BED}(D,n;r,s) = \frac{D}{1-r} - \frac{r}{s(1-r)}\,n\Bigl(1-e^{-s D/n}\Bigr) $$
       </div>
     </div>
 
@@ -56,7 +56,7 @@
             </select>
         </div>
         <p id="cell-help" class="text-xs text-slate-400 mt-1">
-          Choosing a cell line pre-fills parameters (r₀, s, k). Select “— Custom —” to enter your own.
+          Choosing a cell line pre-fills parameters (r, s, k). Select “— Custom —” to enter your own.
         </p>
       </div>
 
@@ -84,14 +84,14 @@
 
       <div>
         <div class="flex items-center justify-between gap-4">
-          <label for="param-r0" class="text-sm font-medium text-slate-600">
-            Initial resilience \(r_0\) (\(< 1\); negatives allowed):
+          <label for="param-r" class="text-sm font-medium text-slate-600">
+            Initial resilience \(r\) (\(< 1\); negatives allowed):
           </label>
-          <input type="number" id="param-r0" step="any" max="0.999999" inputmode="decimal"
+          <input type="number" id="param-r" step="any" max="0.999999" inputmode="decimal"
                  class="w-3/5 md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                  placeholder="e.g., 0.95 or -1.50" aria-invalid="false" />
         </div>
-        <span id="error-r0" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
+        <span id="error-r" class="error-message block mt-1 text-right" role="alert" aria-live="polite"></span>
       </div>
     </div>
 
@@ -180,15 +180,15 @@
     }
 
     // Inputs/Outputs
-    // kInput is the killing efficiency (reference), sInput is sensitization, r0Input is initial resilience
+    // kInput is the killing efficiency (reference), sInput is sensitization, rInput is initial resilience
     const kInput = document.getElementById('param-k'); // disabled
     const sInput = document.getElementById('param-s');
-    const r0Input = document.getElementById('param-r0'); 
+    const rInput = document.getElementById('param-r'); 
 
     const d1Input = document.getElementById('dose-d1');
     const n1Input = document.getElementById('fractions-n1');
     const n2Input = document.getElementById('fractions-n2');
-    const allInputs = [r0Input, sInput, kInput, d1Input, n1Input, n2Input];
+    const allInputs = [rInput, sInput, kInput, d1Input, n1Input, n2Input];
 
     const calculateBtn = document.getElementById('calculate-btn');
     const resultContainer = document.getElementById('result-container');
@@ -197,11 +197,11 @@
     const originalDpfLabel = document.getElementById('original-dpf');
 
     const errS = document.getElementById('error-s');
-    const errR0 = document.getElementById('error-r0'); 
+    const errR = document.getElementById('error-r'); 
     const errD1 = document.getElementById('error-d1');
     const errN1 = document.getElementById('error-n1');
     const errN2 = document.getElementById('error-n2');
-    const allErrors = [errS, errR0, errD1, errN1, errN2];
+    const allErrors = [errS, errR, errD1, errN1, errN2];
 
     const cellLineSelect = document.getElementById('cell-line-select');
 
@@ -228,7 +228,7 @@
     }
 
     function clearParams() {
-      r0Input.value = '';
+      rInput.value = '';
       sInput.value = '';
       kInput.value = '';
     }
@@ -238,7 +238,7 @@
       if (!name) { clearParams(); return; }
       const p = CELL_LINE_SOURCE[name];
       if (!p) return;
-      r0Input.value = Number.isFinite(p.r0) ? p.r0.toFixed(6) : '';
+      rInput.value = Number.isFinite(p.r) ? p.r.toFixed(6) : '';
       sInput.value = Number.isFinite(p.s) ? p.s.toFixed(6) : '';
       kInput.value = Number.isFinite(p.k) ? p.k.toFixed(6) : '';
     }
@@ -286,10 +286,10 @@
         sInput.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
-      const r0Val = parseFloat(r0Input.value);
-      if (!Number.isFinite(r0Val) || r0Val >= 1) {
-        errR0.textContent = 'r₀ must be a finite number < 1 (negatives allowed).';
-        r0Input.setAttribute('aria-invalid', 'true'); ok = false;
+      const rVal = parseFloat(rInput.value);
+      if (!Number.isFinite(rVal) || rVal >= 1) {
+        errR.textContent = 'r must be a finite number < 1 (negatives allowed).';
+        rInput.setAttribute('aria-invalid', 'true'); ok = false;
       }
 
       const D1 = parseFloat(d1Input.value);
@@ -327,36 +327,36 @@
 
     const fmt = (x) => Number.isFinite(x) ? x.toFixed(6) : '—';
 
-    // Core computation (New Parametrization: r0, s, k)
-    // BED = (D / (1-r0)) - (r0 / (s*(1-r0))) * n * (1 - e^(-s*D/n))
-    // K_iso = r0 + (s*(1-r0)/n2) * BED1
-    // D2 = (n2/s) * (K_iso + W0(-r0 * e^-K_iso))
+    // Core computation (New Parametrization: r, s, k)
+    // BED = (D / (1-r)) - (r / (s*(1-r))) * n * (1 - e^(-s*D/n))
+    // K_iso = r + (s*(1-r)/n2) * BED1
+    // D2 = (n2/s) * (K_iso + W0(-r * e^-K_iso))
     function computeAndRender() {
       resultContainer.classList.add('hidden');
       if (!validateInputs()) { updateOriginalDpf(); return; }
 
       const s = parseFloat(sInput.value);
-      const r0 = parseFloat(r0Input.value);
+      const r = parseFloat(rInput.value);
       const D1 = parseFloat(d1Input.value);
       const n1 = parseFloat(n1Input.value);
       const n2 = parseFloat(n2Input.value);
 
       let BED1, K_iso, z, w, D2;
-      const oneMinusR0 = 1 - r0;
+      const oneMinusR = 1 - r;
 
-      if (Math.abs(r0) < 1e-15) {
-        // Limit case r0 -> 0: BED reduces to D.
+      if (Math.abs(r) < 1e-15) {
+        // Limit case r -> 0: BED reduces to D.
         BED1 = D1;
         K_iso = (s / n2) * BED1;
         z = 0; w = 0;
         D2 = D1;
       } else {
-        // Standard case (r0 != 0, r0 < 1)
-        BED1 = (D1 / oneMinusR0) - (r0 / (s * oneMinusR0)) * n1 * (1 - Math.exp(-s * D1 / n1));
+        // Standard case (r != 0, r < 1)
+        BED1 = (D1 / oneMinusR) - (r / (s * oneMinusR)) * n1 * (1 - Math.exp(-s * D1 / n1));
         
-        K_iso = r0 + (s * oneMinusR0 / n2) * BED1;
+        K_iso = r + (s * oneMinusR / n2) * BED1;
         
-        z = -r0 * Math.exp(-K_iso);
+        z = -r * Math.exp(-K_iso);
         w = lambertW0(z);
         
         if (!Number.isFinite(w)) {
@@ -407,7 +407,7 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Enter') computeAndRender(); });
 
     // If inputs are edited, clear the preset dropdown selection
-    [sInput, r0Input].forEach(input => {
+    [sInput, rInput].forEach(input => {
       input.addEventListener('input', () => { cellLineSelect.value = ""; });
     });
 
@@ -424,15 +424,15 @@
   </script>
 
   <script>
-    // Units: k [1/Gy] (killing efficiency), s [1/Gy] (sensitization), r0 < 1 (initial resilience)
-    // Mapping: previous c -> k, b -> s, a -> r0
+    // Units: k [1/Gy] (killing efficiency), s [1/Gy] (sensitization), r < 1 (initial resilience)
+    // Mapping: previous c -> k, b -> s, a -> r
     const CELL_LINE_SOURCE = {
-      "A549 (lung, adenocarcinoma)":  { k: 0.445, s: 0.48,   r0: 0.78  },
-      "CHO-K1 (hamster ovary)":       { k: 0.909, s: 0.241,  r0: 0.944 },
-      "T-47D (breast, epithelial)":   { k: 1.524, s: 0.0405, r0: 0.881 },
-      "V79-379A (hamster)":           { k: 1.71,  s: 0.076,  r0: 0.827 },
-      "XRS5 (CHO mutant, biphasic)":  { k: 0.53,  s: 0.65,   r0: -3.98 },
-      "XRS6 (CHO mutant, biphasic)":  { k: 0.697, s: 1.64,   r0: -1.47 }
+      "A549 (lung, adenocarcinoma)":  { k: 0.445, s: 0.48,   r: 0.78  },
+      "CHO-K1 (hamster ovary)":       { k: 0.909, s: 0.241,  r: 0.944 },
+      "T-47D (breast, epithelial)":   { k: 1.524, s: 0.0405, r: 0.881 },
+      "V79-379A (hamster)":           { k: 1.71,  s: 0.076,  r: 0.827 },
+      "XRS5 (CHO mutant, biphasic)":  { k: 0.53,  s: 0.65,   r: -3.98 },
+      "XRS6 (CHO mutant, biphasic)":  { k: 0.697, s: 1.64,   r: -1.47 }
     };
   </script>
 
