@@ -23,10 +23,14 @@
     input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
     details > summary { cursor: pointer; }
+    
+    /* Input states */
     input.invalid { border-color: #ef4444; background-color: #fef2f2; }
     input.invalid:focus { --tw-ring-color: #ef4444; border-color: #ef4444; }
     
-    /* Animation for source box */
+    /* Disabled/Readonly state override */
+    input:disabled { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; border-color: #e5e7eb; }
+    
     .fade-in { animation: fadeIn 0.5s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -36,21 +40,27 @@
 
   <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
     
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-lg">
-      <p class="font-bold text-xs uppercase tracking-wide">Research Tool</p>
-      <p class="text-xs mt-1">Parameters are derived from historical $D_0$ and LQ data via the $r = 1 - \alpha D_0$ translation. Not validated for clinical use.</p>
+    <div class="bg-indigo-50 border-l-4 border-indigo-500 text-indigo-800 p-4 rounded-lg">
+      <p class="font-bold text-xs uppercase tracking-wide">RD Framework</p>
+      <p class="text-xs mt-1">Converts between Classical ($\alpha, \beta, D_0$) and RD ($r, s, k$) parameters.</p>
     </div>
 
     <div class="text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2 text-sm">RD Framework (Isoeffect via Lambert-$W$)</p>
+      <p class="text-slate-500 mt-2 text-sm">Isoeffect via Lambert-$W$</p>
       <div class="my-3 text-sm overflow-x-auto text-slate-600">
         $$ \mathrm{BED}(D,n) = \frac{D}{1-r} - \frac{n D_q}{1-r}\Bigl(1-e^{-s D/n}\Bigr) $$
       </div>
     </div>
 
     <div class="space-y-4">
-      <h2 class="text-lg font-semibold text-slate-700 border-b pb-1">1. Tumor Parameters</h2>
+      <div class="flex items-center justify-between border-b pb-2">
+        <h2 class="text-lg font-semibold text-slate-700">1. Tissue Parameters</h2>
+        <div class="flex bg-slate-200 rounded-lg p-1 text-xs font-medium">
+            <button id="mode-classical" class="px-3 py-1 rounded-md transition-all shadow-sm bg-white text-slate-800">Classical</button>
+            <button id="mode-rd" class="px-3 py-1 rounded-md transition-all text-slate-500 hover:text-slate-700">RD Params</button>
+        </div>
+      </div>
       
       <div>
         <div class="flex items-center justify-between gap-4">
@@ -61,26 +71,53 @@
         </div>
         
         <p id="cell-desc" class="text-xs text-slate-400 mt-2 italic text-right min-h-[1rem]"></p>
-
         <div id="source-box" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600 fade-in">
             <span class="font-bold text-slate-700">Source:</span> <span id="source-text"></span>
         </div>
       </div>
 
-      <div class="grid grid-cols-3 gap-2">
-        <div>
-          <label class="block text-xs font-medium text-slate-500 mb-1">Resilience \(r\)</label>
-          <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="< 1.0">
+      <div id="group-classical" class="space-y-2 transition-opacity duration-200">
+        <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-bold uppercase text-slate-400">Classical Input</span>
+            <div class="h-px bg-slate-200 flex-grow"></div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-500 mb-1">Sens. \(s\) (1/Gy)</label>
-          <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="> 0.0">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-500 mb-1">Slope \(k\) (1/Gy)</label>
-          <input type="number" id="param-k" step="any" disabled class="w-full px-2 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed text-sm">
+        <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">\(\alpha\) (Gy\(^{-1}\))</label>
+              <input type="number" id="param-alpha" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">\(\beta\) (Gy\(^{-2}\))</label>
+              <input type="number" id="param-beta" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">\(D_0\) (Gy)</label>
+              <input type="number" id="param-d0" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
         </div>
       </div>
+
+      <div id="group-rd" class="space-y-2 transition-opacity duration-200">
+        <div class="flex items-center gap-2 mb-1 mt-2">
+            <span class="text-xs font-bold uppercase text-slate-400">RD Framework</span>
+            <div class="h-px bg-slate-200 flex-grow"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Resilience \(r\)</label>
+              <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Sens. \(s\) (1/Gy)</label>
+              <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Slope \(k\) (1/Gy)</label>
+              <input type="number" id="param-k" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+        </div>
+      </div>
+
       <div id="error-container" class="space-y-1 pt-2 border-t border-red-100 hidden"></div>
     </div>
 
@@ -138,17 +175,39 @@
   <script>
   document.addEventListener('DOMContentLoaded', () => {
     
-    // --- 1. Load Data Source ---
+    // --- 1. DOM Elements ---
     const cellSelect = document.getElementById('cell-line-select');
     const cellDesc = document.getElementById('cell-desc');
     const sourceBox = document.getElementById('source-box');
     const sourceText = document.getElementById('source-text');
+    const errorContainer = document.getElementById('error-container');
+    const btnModeClassical = document.getElementById('mode-classical');
+    const btnModeRD = document.getElementById('mode-rd');
+
+    const inputs = {
+        // Classical
+        alpha: document.getElementById('param-alpha'),
+        beta: document.getElementById('param-beta'),
+        d0: document.getElementById('param-d0'),
+        // RD
+        r: document.getElementById('param-r'),
+        s: document.getElementById('param-s'),
+        k: document.getElementById('param-k'),
+        // Doses
+        d1: document.getElementById('dose-d1'),
+        n1: document.getElementById('fractions-n1'),
+        n2: document.getElementById('fractions-n2')
+    };
+
+    // State
+    let currentMode = 'classical'; // 'classical' | 'rd'
+
+    // --- 2. Initialize Logic ---
     
-    // Check if data loaded
+    // Load Data
     setTimeout(() => {
         if (typeof window.RD_DATA !== 'undefined') {
             cellSelect.innerHTML = '<option value="">— Select Tumor Type —</option>';
-            // Sort keys alphabetically
             Object.keys(window.RD_DATA).sort().forEach(key => {
                 const opt = document.createElement('option');
                 opt.value = key;
@@ -158,65 +217,199 @@
         } else {
             cellSelect.innerHTML = '<option value="">Error: datasrc.js not found</option>';
         }
+        updateModeUI(); // Set initial UI state
     }, 100);
 
-    // --- 2. Math & Logic ---
-    const inputs = {
-        r: document.getElementById('param-r'),
-        s: document.getElementById('param-s'),
-        k: document.getElementById('param-k'),
-        d1: document.getElementById('dose-d1'),
-        n1: document.getElementById('fractions-n1'),
-        n2: document.getElementById('fractions-n2')
-    };
-
-    const errorContainer = document.getElementById('error-container');
-
-    // Helper: Clear validation styles
-    function clearValidation() {
-        Object.values(inputs).forEach(el => el.classList.remove('invalid'));
-        errorContainer.innerHTML = '';
-        errorContainer.classList.add('hidden');
+    // --- 3. Mode Toggle Logic ---
+    function setMode(mode) {
+        currentMode = mode;
+        updateModeUI();
+        clearValidation();
     }
 
-    // Helper: Add error
-    function addError(msg, element) {
-        if (element) element.classList.add('invalid');
-        const p = document.createElement('p');
-        p.className = 'error-text';
-        p.textContent = msg;
-        errorContainer.appendChild(p);
-        errorContainer.classList.remove('hidden');
+    function updateModeUI() {
+        const classicalInputs = [inputs.alpha, inputs.beta, inputs.d0];
+        const rdInputs = [inputs.r, inputs.s, inputs.k];
+
+        if (currentMode === 'classical') {
+            // UI Button State
+            btnModeClassical.classList.replace('text-slate-500', 'text-slate-800');
+            btnModeClassical.classList.replace('bg-transparent', 'bg-white');
+            btnModeClassical.classList.add('shadow-sm');
+            
+            btnModeRD.classList.replace('text-slate-800', 'text-slate-500');
+            btnModeRD.classList.replace('bg-white', 'bg-transparent');
+            btnModeRD.classList.remove('shadow-sm');
+
+            // Enable Classical, Disable RD
+            classicalInputs.forEach(el => el.disabled = false);
+            rdInputs.forEach(el => el.disabled = true);
+            
+            // Recalculate RD from Classical (ensure consistency)
+            convertClassicalToRD();
+
+        } else {
+            // UI Button State
+            btnModeRD.classList.replace('text-slate-500', 'text-slate-800');
+            btnModeRD.classList.replace('bg-transparent', 'bg-white');
+            btnModeRD.classList.add('shadow-sm');
+
+            btnModeClassical.classList.replace('text-slate-800', 'text-slate-500');
+            btnModeClassical.classList.replace('bg-white', 'bg-transparent');
+            btnModeClassical.classList.remove('shadow-sm');
+
+            // Enable RD, Disable Classical
+            rdInputs.forEach(el => el.disabled = false);
+            classicalInputs.forEach(el => el.disabled = true);
+
+            // Recalculate Classical from RD
+            convertRDToClassical();
+        }
     }
 
-    // Auto-fill parameters & Update Source Box
+    btnModeClassical.addEventListener('click', () => setMode('classical'));
+    btnModeRD.addEventListener('click', () => setMode('rd'));
+
+    // --- 4. Conversion Logic ---
+
+    function convertClassicalToRD() {
+        const alpha = parseFloat(inputs.alpha.value);
+        const beta = parseFloat(inputs.beta.value);
+        const D0 = parseFloat(inputs.d0.value);
+
+        if (!isNaN(alpha) && !isNaN(beta) && !isNaN(D0) && D0 !== 0) {
+            const k = 1 / D0;
+            const r = 1 - (alpha * D0);
+            
+            // s derived from beta = r*s*k / 2  => s = 2*beta / (r*k)
+            // Note: If r is very close to 0, calculation is unstable, but mathematically s = 2*beta*D0 / (1 - alpha*D0)
+            let s;
+            if (Math.abs(r) < 1e-6) {
+                 // Singularity at r=0 for this beta mapping, but we can check limit
+                 s = 0; // Placeholder
+            } else {
+                 s = (2 * beta) / (r * k);
+            }
+
+            inputs.k.value = k.toFixed(4);
+            inputs.r.value = r.toFixed(4);
+            inputs.s.value = s.toFixed(4);
+            validateParameters(r, s, k);
+        }
+    }
+
+    function convertRDToClassical() {
+        const r = parseFloat(inputs.r.value);
+        const s = parseFloat(inputs.s.value);
+        const k = parseFloat(inputs.k.value);
+
+        if (!isNaN(r) && !isNaN(s) && !isNaN(k)) {
+            const D0 = 1 / k;
+            const alpha = k * (1 - r);
+            const beta = (r * s * k) / 2;
+
+            inputs.d0.value = D0.toFixed(4);
+            inputs.alpha.value = alpha.toFixed(4);
+            inputs.beta.value = beta.toFixed(4);
+            validateParameters(r, s, k); // check if the manual RD inputs are valid
+        }
+    }
+
+    // Live Input Listeners
+    [inputs.alpha, inputs.beta, inputs.d0].forEach(el => {
+        el.addEventListener('input', () => {
+            if (currentMode === 'classical') convertClassicalToRD();
+        });
+    });
+
+    [inputs.r, inputs.s, inputs.k].forEach(el => {
+        el.addEventListener('input', () => {
+            if (currentMode === 'rd') convertRDToClassical();
+        });
+    });
+
+
+    // --- 5. Data Loading ---
     cellSelect.addEventListener('change', () => {
-        clearValidation(); // clear previous errors on preset change
+        clearValidation();
         const key = cellSelect.value;
         if (key && window.RD_DATA[key]) {
             const data = window.RD_DATA[key];
-            inputs.r.value = data.r;
-            inputs.s.value = data.s;
-            inputs.k.value = data.k;
-            cellDesc.textContent = data.desc || "";
             
-            // Check for source and update box
+            // Populate Classical Fields (Source of Truth)
+            inputs.alpha.value = data.alpha;
+            inputs.beta.value = data.beta;
+            inputs.d0.value = data.D0;
+            
+            cellDesc.textContent = data.desc || "";
             if(data.source) {
                 sourceText.innerHTML = data.source;
                 sourceBox.classList.remove('hidden');
             } else {
                 sourceBox.classList.add('hidden');
             }
+
+            // Trigger conversion to populate RD fields
+            convertClassicalToRD(); 
+
         } else {
-            inputs.r.value = '';
-            inputs.s.value = '';
-            inputs.k.value = '';
+            // Clear all
+            Object.values(inputs).forEach(i => { if(i.id.startsWith('param')) i.value = ''; });
             cellDesc.textContent = "";
             sourceBox.classList.add('hidden');
         }
     });
 
-    // Update DPF Label
+    // --- 6. Helper Functions ---
+
+    function clearValidation() {
+        Object.values(inputs).forEach(el => el.classList.remove('invalid'));
+        errorContainer.innerHTML = '';
+        errorContainer.classList.add('hidden');
+        document.getElementById('calculate-btn').disabled = false;
+        document.getElementById('calculate-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
+    function addError(msg) {
+        const p = document.createElement('p');
+        p.className = 'error-text';
+        p.textContent = msg;
+        errorContainer.appendChild(p);
+        errorContainer.classList.remove('hidden');
+        
+        // Disable Calculate Button
+        const btn = document.getElementById('calculate-btn');
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    function validateParameters(r, s, k) {
+        clearValidation();
+        let valid = true;
+        
+        // Critical Limit: r >= 1 implies alpha <= 0 (assuming k>0)
+        // Mathematically BED equation has singularity at r=1
+        if (r >= 1) {
+            addError("Parameter Error: Resilience (r) must be < 1.0. High r implies non-physical negative alpha.");
+            if(inputs.r) inputs.r.classList.add('invalid');
+            valid = false;
+        }
+
+        if (s <= 0) {
+            addError("Parameter Error: Sensitization (s) must be strictly positive.");
+            if(inputs.s) inputs.s.classList.add('invalid');
+            valid = false;
+        }
+
+        if (k <= 0) {
+            addError("Parameter Error: Slope (k) must be strictly positive.");
+            if(inputs.k) inputs.k.classList.add('invalid');
+            valid = false;
+        }
+        
+        return valid;
+    }
+
     function updateDpf() {
         const d = parseFloat(inputs.d1.value);
         const n = parseFloat(inputs.n1.value);
@@ -227,7 +420,9 @@
     inputs.d1.addEventListener('input', updateDpf);
     inputs.n1.addEventListener('input', updateDpf);
 
-    // Lambert W0 Function (Principal Branch)
+    // --- 7. Calculation ---
+    
+    // Lambert W0
     function lambertW0(z) {
         const minZ = -1 / Math.E;
         if (z < minZ - 1e-9) return NaN; 
@@ -237,102 +432,54 @@
         let w = (z > Math.E) ? Math.log(z) - Math.log(Math.log(z)) : (z >= -0.3 ? z : -0.9);
         for (let i=0; i<50; i++) {
             const ew = Math.exp(w), wew = w*ew;
-            w = w - (wew - z)/(ew*(w+1) - (w+2)*(wew-z)/(2*w+2)); // Halley's method
+            w = w - (wew - z)/(ew*(w+1) - (w+2)*(wew-z)/(2*w+2));
             if (Math.abs(wew - z) < 1e-12) break;
         }
         return w;
     }
 
-    // Calculation Logic
     document.getElementById('calculate-btn').addEventListener('click', () => {
-        clearValidation();
+        // Final sanity check before run
+        const r = parseFloat(inputs.r.value);
+        const s = parseFloat(inputs.s.value);
+        const k = parseFloat(inputs.k.value);
+        
+        if (!validateParameters(r, s, k)) return;
 
-        // 1. Check for Empty Fields
-        const rStr = inputs.r.value.trim();
-        const sStr = inputs.s.value.trim();
-        const d1Str = inputs.d1.value.trim();
-        const n1Str = inputs.n1.value.trim();
-        const n2Str = inputs.n2.value.trim();
+        const D1 = parseFloat(inputs.d1.value);
+        const n1 = parseFloat(inputs.n1.value);
+        const n2 = parseFloat(inputs.n2.value);
 
-        let isValid = true;
-
-        if (!rStr) { addError("Resilience (r) is required.", inputs.r); isValid = false; }
-        if (!sStr) { addError("Sensitization (s) is required.", inputs.s); isValid = false; }
-        if (!d1Str) { addError("Total Dose (D1) is required.", inputs.d1); isValid = false; }
-        if (!n1Str) { addError("Fractions (n1) is required.", inputs.n1); isValid = false; }
-        if (!n2Str) { addError("Target Fractions (n2) is required.", inputs.n2); isValid = false; }
-
-        if (!isValid) return; // Stop if empty
-
-        // 2. Parse Values
-        const r = Number(rStr);
-        const s = Number(sStr);
-        const D1 = Number(d1Str);
-        const n1 = Number(n1Str);
-        const n2 = Number(n2Str);
-
-        // 3. Strict Logic Validation
-        // Resilience (r) < 1
-        if (r >= 1) {
-            addError("Resilience (r) must be strictly less than 1.0", inputs.r);
-            isValid = false;
+        if (!D1 || !n1 || !n2 || D1<=0 || n1<=0 || n2<=0 || !Number.isInteger(n1) || !Number.isInteger(n2)) {
+             // Basic field validation
+             if(!D1 || D1<=0) inputs.d1.classList.add('invalid');
+             if(!n1 || n1<=0) inputs.n1.classList.add('invalid');
+             if(!n2 || n2<=0) inputs.n2.classList.add('invalid');
+             return;
         }
 
-        // Sensitization (s) > 0
-        if (s <= 0) {
-            addError("Sensitization (s) must be strictly positive (> 0)", inputs.s);
-            isValid = false;
-        }
-
-        // Total Dose (D1) > 0
-        if (D1 <= 0) {
-            addError("Total Dose (D1) must be strictly positive", inputs.d1);
-            isValid = false;
-        }
-
-        // Fractions (n1) Positive Integer
-        if (n1 <= 0 || !Number.isInteger(n1)) {
-            addError("Fractions (n1) must be a positive integer", inputs.n1);
-            isValid = false;
-        }
-
-        // Target Fractions (n2) Positive Integer
-        if (n2 <= 0 || !Number.isInteger(n2)) {
-            addError("Target Fractions (n2) must be a positive integer", inputs.n2);
-            isValid = false;
-        }
-
-        if (!isValid) return; // Stop calculation on logic error
-
-        // --- MATH ---
-
-        // 1. Calculate BED of Reference
-        // BED = D/(1-r) - (Dq/(1-r))*n*(1 - exp(-s*D/n))
         const one_r = 1 - r;
-        const Dq = r / s; // Shoulder displacement
+        const Dq = r / s;
         const d1 = D1 / n1;
         
-        // Handle r=0 limit (Linear model)
+        // Calc BED1
         let BED1;
         if (Math.abs(r) < 1e-6) BED1 = D1; 
         else BED1 = (D1/one_r) - (Dq * n1 / one_r) * (1 - Math.exp(-s * d1));
 
-        // 2. Solve for D2 using Lambert W
-        // K = r + [s(1-r)/n2] * BED1
-        // D2 = (n2/s) * (K + W0(-r * exp(-K)))
+        // Solve D2
         const K = r + (s * one_r / n2) * BED1;
         const arg = -r * Math.exp(-K);
         const w_val = lambertW0(arg);
 
         if (isNaN(w_val)) {
-            addError("Calculation Error: Lambert W argument out of bounds. The parameters may imply an impossible physical state.", null);
+            addError("Calculation Error: Result implies impossible physical state (Lambert W failure).");
             return;
         }
 
         const D2 = (n2 / s) * (K + w_val);
         const d2 = D2 / n2;
 
-        // Render Results
         document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
         document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
         
