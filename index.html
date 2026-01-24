@@ -18,7 +18,7 @@
 
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .error-text { color: #ef4444; font-size: 0.75rem; display: block; margin-top: 0.25rem; }
+    .error-text { color: #ef4444; font-size: 0.75rem; display: block; margin-top: 0.25rem; font-weight: 500; }
     input[type="number"]::-webkit-outer-spin-button,
     input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
@@ -247,60 +247,62 @@
     document.getElementById('calculate-btn').addEventListener('click', () => {
         clearValidation();
 
-        // Parse Values
-        const rStr = inputs.r.value;
-        const sStr = inputs.s.value;
-        const d1Str = inputs.d1.value;
-        const n1Str = inputs.n1.value;
-        const n2Str = inputs.n2.value;
+        // 1. Check for Empty Fields
+        const rStr = inputs.r.value.trim();
+        const sStr = inputs.s.value.trim();
+        const d1Str = inputs.d1.value.trim();
+        const n1Str = inputs.n1.value.trim();
+        const n2Str = inputs.n2.value.trim();
 
-        // Basic Empty Check
-        if (!rStr || !sStr || !d1Str || !n1Str || !n2Str) {
-            addError("Please fill all fields.", null);
-            return;
-        }
+        let isValid = true;
 
+        if (!rStr) { addError("Resilience (r) is required.", inputs.r); isValid = false; }
+        if (!sStr) { addError("Sensitization (s) is required.", inputs.s); isValid = false; }
+        if (!d1Str) { addError("Total Dose (D1) is required.", inputs.d1); isValid = false; }
+        if (!n1Str) { addError("Fractions (n1) is required.", inputs.n1); isValid = false; }
+        if (!n2Str) { addError("Target Fractions (n2) is required.", inputs.n2); isValid = false; }
+
+        if (!isValid) return; // Stop if empty
+
+        // 2. Parse Values
         const r = Number(rStr);
         const s = Number(sStr);
         const D1 = Number(d1Str);
         const n1 = Number(n1Str);
         const n2 = Number(n2Str);
 
-        let isValid = true;
-
-        // --- STRICT VALIDATION RULES ---
-        
-        // 1. Resilience (r) < 1
+        // 3. Strict Logic Validation
+        // Resilience (r) < 1
         if (r >= 1) {
             addError("Resilience (r) must be strictly less than 1.0", inputs.r);
             isValid = false;
         }
 
-        // 2. Sensitization (s) > 0
+        // Sensitization (s) > 0
         if (s <= 0) {
             addError("Sensitization (s) must be strictly positive (> 0)", inputs.s);
             isValid = false;
         }
 
-        // 3. Total Dose (D1) > 0
+        // Total Dose (D1) > 0
         if (D1 <= 0) {
             addError("Total Dose (D1) must be strictly positive", inputs.d1);
             isValid = false;
         }
 
-        // 4. Fractions (n1) Positive Integer
+        // Fractions (n1) Positive Integer
         if (n1 <= 0 || !Number.isInteger(n1)) {
             addError("Fractions (n1) must be a positive integer", inputs.n1);
             isValid = false;
         }
 
-        // 5. Target Fractions (n2) Positive Integer
+        // Target Fractions (n2) Positive Integer
         if (n2 <= 0 || !Number.isInteger(n2)) {
             addError("Target Fractions (n2) must be a positive integer", inputs.n2);
             isValid = false;
         }
 
-        if (!isValid) return; // Stop calculation on error
+        if (!isValid) return; // Stop calculation on logic error
 
         // --- MATH ---
 
