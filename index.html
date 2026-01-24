@@ -18,13 +18,13 @@
 
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .error-message { color: #ef4444; font-size: 0.875rem; min-height: 1.25rem; transition: opacity .3s; }
+    .error-text { color: #ef4444; font-size: 0.75rem; display: block; margin-top: 0.25rem; }
     input[type="number"]::-webkit-outer-spin-button,
     input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
     details > summary { cursor: pointer; }
-    input[aria-invalid="true"] { border-color: #ef4444; }
-    input[aria-invalid="true"]:focus { --tw-ring-color: #ef4444; border-color: #ef4444; }
+    input.invalid { border-color: #ef4444; background-color: #fef2f2; }
+    input.invalid:focus { --tw-ring-color: #ef4444; border-color: #ef4444; }
     
     /* Animation for source box */
     .fade-in { animation: fadeIn 0.5s ease-in-out; }
@@ -70,18 +70,18 @@
       <div class="grid grid-cols-3 gap-2">
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Resilience \(r\)</label>
-          <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="0.9">
+          <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="< 1.0">
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Sens. \(s\) (1/Gy)</label>
-          <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="0.2">
+          <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="> 0.0">
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Slope \(k\) (1/Gy)</label>
           <input type="number" id="param-k" step="any" disabled class="w-full px-2 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed text-sm">
         </div>
       </div>
-      <span id="error-params" class="error-message block text-center"></span>
+      <div id="error-container" class="space-y-1 pt-2 border-t border-red-100 hidden"></div>
     </div>
 
     <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
@@ -89,11 +89,11 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="text-sm font-medium text-slate-600">Total Dose \(D_1\)</label>
-          <input type="number" id="dose-d1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="e.g., 60">
+          <input type="number" id="dose-d1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="> 0">
         </div>
         <div>
           <label class="text-sm font-medium text-slate-600">Fractions \(n_1\)</label>
-          <input type="number" id="fractions-n1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="e.g., 30">
+          <input type="number" id="fractions-n1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
         </div>
       </div>
       <div class="text-xs text-right text-slate-500">
@@ -105,7 +105,7 @@
       <h2 class="text-lg font-semibold text-slate-700">3. Target Schedule</h2>
       <div class="flex items-center justify-between gap-4">
         <label class="text-sm font-medium text-slate-600">New Fractions \(n_2\):</label>
-        <input type="number" id="fractions-n2" class="w-1/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="e.g., 5">
+        <input type="number" id="fractions-n2" class="w-1/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
       </div>
     </div>
 
@@ -170,8 +170,28 @@
         n2: document.getElementById('fractions-n2')
     };
 
+    const errorContainer = document.getElementById('error-container');
+
+    // Helper: Clear validation styles
+    function clearValidation() {
+        Object.values(inputs).forEach(el => el.classList.remove('invalid'));
+        errorContainer.innerHTML = '';
+        errorContainer.classList.add('hidden');
+    }
+
+    // Helper: Add error
+    function addError(msg, element) {
+        if (element) element.classList.add('invalid');
+        const p = document.createElement('p');
+        p.className = 'error-text';
+        p.textContent = msg;
+        errorContainer.appendChild(p);
+        errorContainer.classList.remove('hidden');
+    }
+
     // Auto-fill parameters & Update Source Box
     cellSelect.addEventListener('change', () => {
+        clearValidation(); // clear previous errors on preset change
         const key = cellSelect.value;
         if (key && window.RD_DATA[key]) {
             const data = window.RD_DATA[key];
@@ -225,18 +245,64 @@
 
     // Calculation Logic
     document.getElementById('calculate-btn').addEventListener('click', () => {
-        const r = parseFloat(inputs.r.value);
-        const s = parseFloat(inputs.s.value);
-        const D1 = parseFloat(inputs.d1.value);
-        const n1 = parseFloat(inputs.n1.value);
-        const n2 = parseFloat(inputs.n2.value);
+        clearValidation();
 
-        // Validation
-        const err = document.getElementById('error-params');
-        err.textContent = "";
-        if ([r, s, D1, n1, n2].some(isNaN)) {
-            err.textContent = "Please fill all fields."; return;
+        // Parse Values
+        const rStr = inputs.r.value;
+        const sStr = inputs.s.value;
+        const d1Str = inputs.d1.value;
+        const n1Str = inputs.n1.value;
+        const n2Str = inputs.n2.value;
+
+        // Basic Empty Check
+        if (!rStr || !sStr || !d1Str || !n1Str || !n2Str) {
+            addError("Please fill all fields.", null);
+            return;
         }
+
+        const r = Number(rStr);
+        const s = Number(sStr);
+        const D1 = Number(d1Str);
+        const n1 = Number(n1Str);
+        const n2 = Number(n2Str);
+
+        let isValid = true;
+
+        // --- STRICT VALIDATION RULES ---
+        
+        // 1. Resilience (r) < 1
+        if (r >= 1) {
+            addError("Resilience (r) must be strictly less than 1.0", inputs.r);
+            isValid = false;
+        }
+
+        // 2. Sensitization (s) > 0
+        if (s <= 0) {
+            addError("Sensitization (s) must be strictly positive (> 0)", inputs.s);
+            isValid = false;
+        }
+
+        // 3. Total Dose (D1) > 0
+        if (D1 <= 0) {
+            addError("Total Dose (D1) must be strictly positive", inputs.d1);
+            isValid = false;
+        }
+
+        // 4. Fractions (n1) Positive Integer
+        if (n1 <= 0 || !Number.isInteger(n1)) {
+            addError("Fractions (n1) must be a positive integer", inputs.n1);
+            isValid = false;
+        }
+
+        // 5. Target Fractions (n2) Positive Integer
+        if (n2 <= 0 || !Number.isInteger(n2)) {
+            addError("Target Fractions (n2) must be a positive integer", inputs.n2);
+            isValid = false;
+        }
+
+        if (!isValid) return; // Stop calculation on error
+
+        // --- MATH ---
 
         // 1. Calculate BED of Reference
         // BED = D/(1-r) - (Dq/(1-r))*n*(1 - exp(-s*D/n))
@@ -257,7 +323,7 @@
         const w_val = lambertW0(arg);
 
         if (isNaN(w_val)) {
-            alert("No solution found (Lambert W argument out of bounds). Check parameters.");
+            addError("Calculation Error: Lambert W argument out of bounds. The parameters may imply an impossible physical state.", null);
             return;
         }
 
