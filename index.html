@@ -281,11 +281,8 @@
             const k = 1 / D0;
             const r = 1 - (alpha * D0);
             
-            // s derived from beta = r*s*k / 2  => s = 2*beta / (r*k)
-            // Note: If r is very close to 0, calculation is unstable, but mathematically s = 2*beta*D0 / (1 - alpha*D0)
             let s;
             if (Math.abs(r) < 1e-6) {
-                 // Singularity at r=0 for this beta mapping, but we can check limit
                  s = 0; // Placeholder
             } else {
                  s = (2 * beta) / (r * k);
@@ -311,32 +308,45 @@
             inputs.d0.value = D0.toFixed(4);
             inputs.alpha.value = alpha.toFixed(4);
             inputs.beta.value = beta.toFixed(4);
-            validateParameters(r, s, k); // check if the manual RD inputs are valid
+            validateParameters(r, s, k); 
         }
     }
 
-    // Live Input Listeners
+    // --- 5. Event Listeners for Resetting Custom Status ---
+
+    // Common function to reset dropdown if user edits data
+    function handleUserEdit() {
+        if (cellSelect.value !== "") {
+            cellSelect.value = ""; // Reset dropdown to default
+            cellDesc.textContent = ""; // Clear description
+            sourceBox.classList.add('hidden'); // Hide source
+        }
+    }
+
+    // Live Input Listeners for Logic + UI Reset
     [inputs.alpha, inputs.beta, inputs.d0].forEach(el => {
         el.addEventListener('input', () => {
+            handleUserEdit(); // <--- RESET DROPDOWN
             if (currentMode === 'classical') convertClassicalToRD();
         });
     });
 
     [inputs.r, inputs.s, inputs.k].forEach(el => {
         el.addEventListener('input', () => {
+            handleUserEdit(); // <--- RESET DROPDOWN
             if (currentMode === 'rd') convertRDToClassical();
         });
     });
 
 
-    // --- 5. Data Loading ---
+    // --- 6. Data Loading (Preset Selection) ---
     cellSelect.addEventListener('change', () => {
         clearValidation();
         const key = cellSelect.value;
         if (key && window.RD_DATA[key]) {
             const data = window.RD_DATA[key];
             
-            // Populate Classical Fields (Source of Truth)
+            // Populate Classical Fields
             inputs.alpha.value = data.alpha;
             inputs.beta.value = data.beta;
             inputs.d0.value = data.D0;
@@ -353,14 +363,14 @@
             convertClassicalToRD(); 
 
         } else {
-            // Clear all
+            // If user selects the "---Select---" option manually
             Object.values(inputs).forEach(i => { if(i.id.startsWith('param')) i.value = ''; });
             cellDesc.textContent = "";
             sourceBox.classList.add('hidden');
         }
     });
 
-    // --- 6. Helper Functions ---
+    // --- 7. Helper Functions ---
 
     function clearValidation() {
         Object.values(inputs).forEach(el => el.classList.remove('invalid'));
@@ -387,8 +397,6 @@
         clearValidation();
         let valid = true;
         
-        // Critical Limit: r >= 1 implies alpha <= 0 (assuming k>0)
-        // Mathematically BED equation has singularity at r=1
         if (r >= 1) {
             addError("Parameter Error: Resilience (r) must be < 1.0. High r implies non-physical negative alpha.");
             if(inputs.r) inputs.r.classList.add('invalid');
@@ -420,7 +428,7 @@
     inputs.d1.addEventListener('input', updateDpf);
     inputs.n1.addEventListener('input', updateDpf);
 
-    // --- 7. Calculation ---
+    // --- 8. Calculation ---
     
     // Lambert W0
     function lambertW0(z) {
@@ -439,7 +447,6 @@
     }
 
     document.getElementById('calculate-btn').addEventListener('click', () => {
-        // Final sanity check before run
         const r = parseFloat(inputs.r.value);
         const s = parseFloat(inputs.s.value);
         const k = parseFloat(inputs.k.value);
@@ -451,7 +458,6 @@
         const n2 = parseFloat(inputs.n2.value);
 
         if (!D1 || !n1 || !n2 || D1<=0 || n1<=0 || n2<=0 || !Number.isInteger(n1) || !Number.isInteger(n2)) {
-             // Basic field validation
              if(!D1 || D1<=0) inputs.d1.classList.add('invalid');
              if(!n1 || n1<=0) inputs.n1.classList.add('invalid');
              if(!n2 || n2<=0) inputs.n2.classList.add('invalid');
@@ -462,12 +468,10 @@
         const Dq = r / s;
         const d1 = D1 / n1;
         
-        // Calc BED1
         let BED1;
         if (Math.abs(r) < 1e-6) BED1 = D1; 
         else BED1 = (D1/one_r) - (Dq * n1 / one_r) * (1 - Math.exp(-s * d1));
 
-        // Solve D2
         const K = r + (s * one_r / n2) * BED1;
         const arg = -r * Math.exp(-K);
         const w_val = lambertW0(arg);
