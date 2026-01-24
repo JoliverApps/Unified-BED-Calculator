@@ -227,19 +227,29 @@
         clearValidation();
     }
 
+    // Helper functions to force styling
+    const setActive = (btn) => {
+        // Remove inactive styles
+        btn.classList.remove('bg-transparent', 'text-slate-500', 'hover:text-slate-700');
+        // Add active styles
+        btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+    };
+
+    const setInactive = (btn) => {
+        // Remove active styles
+        btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+        // Add inactive styles
+        btn.classList.add('bg-transparent', 'text-slate-500', 'hover:text-slate-700');
+    };
+
     function updateModeUI() {
         const classicalInputs = [inputs.alpha, inputs.beta, inputs.d0];
         const rdInputs = [inputs.r, inputs.s, inputs.k];
 
         if (currentMode === 'classical') {
-            // UI Button State
-            btnModeClassical.classList.replace('text-slate-500', 'text-slate-800');
-            btnModeClassical.classList.replace('bg-transparent', 'bg-white');
-            btnModeClassical.classList.add('shadow-sm');
-            
-            btnModeRD.classList.replace('text-slate-800', 'text-slate-500');
-            btnModeRD.classList.replace('bg-white', 'bg-transparent');
-            btnModeRD.classList.remove('shadow-sm');
+            // Apply Styles
+            setActive(btnModeClassical);
+            setInactive(btnModeRD);
 
             // Enable Classical, Disable RD
             classicalInputs.forEach(el => el.disabled = false);
@@ -249,14 +259,9 @@
             convertClassicalToRD();
 
         } else {
-            // UI Button State
-            btnModeRD.classList.replace('text-slate-500', 'text-slate-800');
-            btnModeRD.classList.replace('bg-transparent', 'bg-white');
-            btnModeRD.classList.add('shadow-sm');
-
-            btnModeClassical.classList.replace('text-slate-800', 'text-slate-500');
-            btnModeClassical.classList.replace('bg-white', 'bg-transparent');
-            btnModeClassical.classList.remove('shadow-sm');
+            // Apply Styles
+            setActive(btnModeRD);
+            setInactive(btnModeClassical);
 
             // Enable RD, Disable Classical
             rdInputs.forEach(el => el.disabled = false);
