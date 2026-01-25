@@ -1,61 +1,112 @@
 # Unified BED Calculator
 
-💻 Interactive web calculator for the Unified Biologically Effective Dose (BED) framework, providing closed-form isoeffect solutions for radiation therapy.
+Interactive web calculator for the **Unified Biologically Effective Dose (BED)** in the **Resilience–Depletion (RD)** framework, providing a closed-form isoeffect solution for radiotherapy fractionation comparisons.
 
-**Live Demo:** [**https://joliverapps.github.io/Unified-BED-Calculator/**](https://joliverapps.github.io/Unified-BED-Calculator/)
+**Live Demo:** [https://joliverapps.github.io/Unified-BED-Calculator/](https://joliverapps.github.io/Unified-BED-Calculator/)
 
 ---
 
 > ⚠️ **Clinical Disclaimer**
 >
-> This is a non-validated, non-approved application intended solely to demonstrate the feasibility of the calculation presented in the associated paper. **It must not be used for any clinical purpose.** Usage is the sole responsibility of the end-user.
+> This is a non-validated, non-approved research demonstration tool intended solely to illustrate the calculations presented in the associated manuscript. **It must not be used for clinical decision-making.** Use is entirely at the end-user’s risk.
 
 ## Overview
 
-This is a simple, static web application (HTML/JS/Tailwind CSS) that serves as the companion tool for the paper: *"First-principles Resilience-Depletion (RD) model unifying BED from conventional to hypofractionated dose"*.
+This is a simple, static web application (HTML / vanilla JavaScript / Tailwind CSS) that serves as a companion tool for the paper:
 
-The standard Linear-Quadratic (LQ) model fails to accurately predict cell survival at the high doses per fraction used in SBRT and SRS. This tool implements the survival model derived in our paper, which is based on the postulate of **proportional depletion of resilience**.
+*First-principles Resilience-Depletion (RD) model unifying BED from conventional to hypofractionated dose.*
 
-This framework yields a single, unified Biologically Effective Dose (BED) that is valid across all dose regimes, from conventional fractionation to extreme hypofractionation. This calculator provides a practical, closed-form solution to find isoeffective dose schedules using this new model.
+The standard Linear–Quadratic (LQ) model is widely used but can mischaracterize survival and isoeffect at the high dose-per-fraction regimes used in SBRT/SRS. This tool implements the **RD survival-derived BED** from the paper, based on the postulate of **proportional depletion of resilience**, yielding a **single BED definition** that remains well-behaved from conventional fractionation to extreme hypofractionation.
 
 ![Screenshot of the Unified BED Calculator](uBED_app_v1.png)
 
-## The Model
+## The Model Implemented
 
-The calculation is based on the unified Biologically Effective Dose (BED) derived in the paper (Eq. \ref{eq:BED_bc}):
+### Parameterization
 
-$$
-\mathrm{BED}(D,n;b,c) = D-\frac{c}{b}\,n\Bigl(1-e^{-b D/n}\Bigr)
-$$
+The app is intentionally built around **three classical radiobiological inputs**:
 
-Where:
-* $D$ is the total dose.
-* $n$ is the number of fractions.
-* $b$ is the **sensitization rate**.
-* $c$ is the **effective initial resilience**.
+- \(\alpha\) (Gy\(^{-1}\))
+- \(\beta\) (Gy\(^{-2}\))
+- \(D_0\) (Gy), where \(k \coloneqq 1/D_0\)
 
-To find an equivalent total dose $D_2$ for a new schedule of $n_2$ fractions, the tool solves the isoeffect equation $\mathrm{BED}(D_1, n_1) = \mathrm{BED}(D_2, n_2)$. It uses the exact, closed-form solution derived in the paper (Eq. \ref{eq:D2_solution}), which relies on the principal branch of the **Lambert-$W$ function**:
+These are used to compute the RD parameters internally:
 
-$$
-D_2=\frac{n_2}{b}\Bigl(K+W_0\!\bigl(-c e^{-K}\bigr)\Bigr)
-$$
+\[
+k = \frac{1}{D_0}, \qquad r = 1-\alpha D_0, \qquad s = \frac{2\beta}{r k} = \frac{2\beta D_0}{r}.
+\]
 
-Where the intermediate term $K$ is defined as:
+This design choice is deliberate: many published datasets provide \(\alpha\), \(\beta\), and (historically) a terminal-slope scale such as \(D_0\). The calculator therefore preserves the paper’s operational mapping without requiring ad hoc reparameterizations.
 
-$$
-K \coloneqq c+\frac{b}{n_2} \mathrm{BED}(D_1,n_1;b,c)
-$$
+### Unified BED (RD, \(m=1\))
 
-This approach provides a single, consistent method for comparing all fractionation schedules without the limitations of the LQ model.
+For a schedule with total dose \(D\) delivered in \(n\) fractions (\(d = D/n\)), the unified RD BED used in the calculator is:
+
+\[
+\mathrm{BED}(D,n;r,s)
+=
+\frac{D}{1-r}
+-
+\frac{n}{1-r}\frac{r}{s}\Bigl(1-e^{-s D/n}\Bigr).
+\]
+
+Isoeffect between two schedules \((D_1,n_1)\) and \((D_2,n_2)\) is defined by:
+
+\[
+\mathrm{BED}(D_1,n_1;r,s) = \mathrm{BED}(D_2,n_2;r,s).
+\]
+
+### Closed-form isoeffect solution (Lambert-\(W\))
+
+The tool solves the isoeffect equation in closed form using the principal branch \(W_0\):
+
+\[
+D_2=\frac{n_2}{s}\Bigl(K+W_0\!\bigl(-r e^{-K}\bigr)\Bigr),
+\]
+
+with
+
+\[
+K\coloneqq r+\frac{s(1-r)}{n_2}\mathrm{BED}(D_1,n_1;r,s).
+\]
+
+The Lambert-\(W\) function is implemented in vanilla JavaScript via a robust iterative routine (principal branch).
+
+### Special case: single-hit limit (\(s=0\))
+
+The implementation explicitly handles the **\(s \to 0\)** limit (classical single-hit behavior). In this limit the RD hazard reduces to a purely linear form and BED becomes proportional to physical dose, so isoeffect reduces to:
+
+\[
+D_2 = D_1.
+\]
+
+The app detects \(s=0\) (within a small numerical tolerance) and applies this limit directly, avoiding division by \(s\) and avoiding the ill-defined intermediate quantity \(D_q=r/s\).
 
 ## Features
 
-* **Calculate Equivalent Dose:** Find the equivalent total dose ($D_2$) and new dose-per-fraction ($d_2$) for a target number of fractions ($n_2$).
-* **Closed-Form Solution:** Uses a direct, exact calculation via the Lambert-$W$ function (implemented in vanilla JavaScript).
-* **Cell Line Presets:** Includes pre-filled parameters ($a, b, c$) for the cell lines analyzed in the paper (e.g., T-47D, A549, XRS5, etc.).
-* **Custom Parameters:** Allows for manual entry of $b$ and $c$ for any tissue type.
-* **Handles Heterogeneity:** The model and calculator correctly handle heterogeneous populations via an **effective negative resilience ($c < 0$)**, which describes biphasic survival curves (e.g., XRS5, XRS6).
-* **Lightweight & Static:** Runs entirely in the browser. No server or build step required.
+- **Isoeffect Solver:** Compute the equivalent total dose \(D_2\) and dose-per-fraction \(d_2\) for a target fraction count \(n_2\).
+- **Closed-form Solution:** Uses the exact RD Lambert-\(W\) isoeffect solution (principal branch) for \(s>0\), plus a correct \(s=0\) limit.
+- **Two Input Modes:** Toggle between:
+  - **Classical mode** (\(\alpha,\beta,D_0\)) and
+  - **RD mode** (\(r,s,k\)),
+  with automatic conversion.
+- **Preset Library:** `datasrc.js` provides curated presets storing **\(\alpha,\beta,D_0\)** plus traceability metadata.
+- **Traceability Fields:** Each preset includes a memo-style citation plus optional **DOI** and **URL** fields.
+- **Strong Input Validation:** Enforces physical/operational constraints before allowing computation:
+  - \(\alpha>0\), \(\beta\ge 0\), \(D_0>0\)
+  - \(k>0\), \(r<1\) (strict; \(r=1\) disallowed), \(s\ge 0\)
+  - \(D_1>0\), \(n_1,n_2\in\mathbb{Z}_{>0}\)
+- **Preset Safety Behavior:** If a preset is selected and the user edits any input field, the app automatically resets the preset dropdown to “— Select Tumor Type —” and clears all other inputs to prevent mixed provenance states.
+- **Static & Lightweight:** Runs entirely in the browser; no server and no build step required.
+
+## Repository Structure
+
+Typical structure:
+
+- `index.html` — UI markup
+- `app.js` — application logic (validation, conversions, Lambert-\(W\), solver)
+- `datasrc.js` — preset library (classical parameters + DOI/URL + source memo)
+- `styles.css` — minimal overrides
 
 ## License
 
