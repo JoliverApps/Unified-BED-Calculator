@@ -1,0 +1,29 @@
+body { font-family: 'Inter', sans-serif; }
+
+.error-text {
+  color: #ef4444;
+  font-size: 0.75rem;
+  display: block;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+input[type="number"] { -moz-appearance: textfield; }
+
+details > summary { cursor: pointer; }
+
+input.invalid { border-color: #ef4444; background-color: #fef2f2; }
+input.invalid:focus { --tw-ring-color: #ef4444; border-color: #ef4444; }
+
+input:disabled {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.fade-in { animation: fadeIn 0.35s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
