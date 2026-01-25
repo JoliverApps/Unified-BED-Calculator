@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // --- DOM ---
+  // --- DOM Elements ---
   const cellSelect = document.getElementById('cell-line-select');
   const cellDesc = document.getElementById('cell-desc');
   const sourceBox = document.getElementById('source-box');
@@ -34,7 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentMode = 'classical'; // 'classical' | 'rd'
   let suppress = false;
 
-  // --- UI helpers ---
+  // --- Numeric Tolerances ---
+  const B_EPS = 1e-12;     // Tolerance for beta -> 0
+  const S_EPS = 1e-12;     // Tolerance for s -> 0
+  const R_EPS = 1e-12;     // Tolerance for r -> 0 singularity
+  const ONE_R_EPS = 1e-9;  // Tolerance for 1-r -> 0 (BED blowup)
+  const W_EPS = 1e-14;     // Lambert W convergence
+
+  // --- UI Helpers ---
   const setActive = (btn) => {
     btn.classList.remove('bg-transparent', 'text-slate-500', 'hover:text-slate-700');
     btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
@@ -63,9 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     p.textContent = msg;
     errorContainer.appendChild(p);
     errorContainer.classList.remove('hidden');
-
     elements.forEach(el => el.classList.add('invalid'));
-
     btnCalc.disabled = true;
     btnCalc.classList.add('opacity-50', 'cursor-not-allowed');
   }
@@ -79,28 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number.isFinite(x) && Number.isInteger(x) && x > 0;
   }
 
-  // --- REQUIRED BEHAVIOR ---
-  // If preset is selected and user types in ANY input:
-  // reset dropdown to default and clear all other inputs (keep only edited field).
-  function breakPresetAndClearOthers(editedEl) {
-    if (suppress) return;
-    if (cellSelect.value === "") return;
-
-    suppress = true;
-
-    // Reset preset UI
-    cellSelect.value = "";
-    cellDesc.textContent = "";
-    sourceBox.classList.add('hidden');
-
-    // Clear all inputs except editedEl
-    Object.values(inputs).forEach(el => {
-      if (el !== editedEl) el.value = '';
-    });
-
-    suppress = false;
+  function needFinite(name, x, els = []) {
+    if (!Number.isFinite(x)) {
+      addError(`Internal error: ${name} is missing or invalid. Check inputs.`, els);
+      return false;
+    }
+    return true;
   }
 
+  // --- Helper: Update Dose Per Fraction Display ---
   function updateDpf() {
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
@@ -111,11 +103,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- Validation ---
-  // strict=false: validate only fields that are filled.
-  // strict=true: require everything needed for calculation.
+  // --- UX: Break Preset (Detach) ---
+  // Improved behavior: Keep values, just clear the dropdown so user can edit.
+  function breakPresetAndDetach(editedEl) {
+    if (suppress) return;
+    if (cellSelect.value === "") return;
+
+    suppress = true;
+    cellSelect.value = "";
+    cellDesc.textContent = "";
+    sourceBox.classList.add('hidden');
+    suppress = false;
+  }
+
+  // --- Validation Logic (Mode Aware) ---
   function validateAll(strict = false) {
     clearErrorsAndInvalid();
+
+    // Determine relevance based on mode
+    const scheduleSet = new Set([inputs.d1, inputs.n1, inputs.n2]);
+    const shouldValidate = (el) => {
+      if (scheduleSet.has(el)) return true;
+      if (el.disabled) return false; // Ignore disabled fields
+      if (strict) return true;
+      return el.value !== "";
+    };
 
     const alpha = toNum(inputs.alpha.value);
     const beta  = toNum(inputs.beta.value);
@@ -129,44 +141,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const n1 = toNum(inputs.n1.value);
     const n2 = toNum(inputs.n2.value);
 
-    // Classical
-    if (strict || inputs.alpha.value !== "") {
+    // --- Classical Validation ---
+    if (shouldValidate(inputs.alpha)) {
       if (!(Number.isFinite(alpha) && alpha > 0)) addError("α must be strictly positive.", [inputs.alpha]);
     }
-    if (strict || inputs.beta.value !== "") {
-      if (!(Number.isFinite(beta) && beta >= 0)) addError("β must be non-negative.", [inputs.beta]);
+    if (shouldValidate(inputs.beta)) {
+      if (!(Number.isFinite(beta) && beta >= 0)) addError("β must be non-negative (0 is allowed).", [inputs.beta]);
     }
-    if (strict || inputs.d0.value !== "") {
+    if (shouldValidate(inputs.d0)) {
       if (!(Number.isFinite(D0) && D0 > 0)) addError("D0 must be strictly positive.", [inputs.d0]);
     }
 
-    // RD
-    if (strict || inputs.k.value !== "") {
+    // --- RD Validation ---
+    if (shouldValidate(inputs.k)) {
       if (!(Number.isFinite(k) && k > 0)) addError("k must be strictly positive.", [inputs.k]);
     }
-    if (strict || inputs.r.value !== "") {
-      if (!(Number.isFinite(r) && r < 1)) addError("r must be finite and strictly < 1 (r = 1 is not allowed).", [inputs.r]);
+    if (shouldValidate(inputs.r)) {
+      if (!(Number.isFinite(r) && r < 1)) addError("r must be strictly < 1.", [inputs.r]);
+      if (Number.isFinite(r) && (1 - r) <= ONE_R_EPS) addError("r is too close to 1 (BED singularity).", [inputs.r]);
     }
-    if (strict || inputs.s.value !== "") {
-      // s=0 is allowed as the single-hit limit
-      if (!(Number.isFinite(s) && s >= 0)) addError("s must be non-negative (s = 0 allowed as the single-hit limit).", [inputs.s]);
+    if (shouldValidate(inputs.s)) {
+      if (!(Number.isFinite(s) && s >= 0)) addError("s must be non-negative (0 is allowed).", [inputs.s]);
     }
 
-    // Schedule
-    if (strict || inputs.d1.value !== "") {
-      if (!(Number.isFinite(D1) && D1 > 0)) addError("D1 must be > 0.", [inputs.d1]);
+    // --- Schedule Validation ---
+    if (shouldValidate(inputs.d1)) {
+      if (!(Number.isFinite(D1) && D1 > 0)) addError("Total Dose D1 must be > 0.", [inputs.d1]);
     }
-    if (strict || inputs.n1.value !== "") {
+    if (shouldValidate(inputs.n1)) {
       if (!isPosInt(n1)) addError("n1 must be a positive integer.", [inputs.n1]);
     }
-    if (strict || inputs.n2.value !== "") {
+    if (shouldValidate(inputs.n2)) {
       if (!isPosInt(n2)) addError("n2 must be a positive integer.", [inputs.n2]);
     }
 
     return !btnCalc.disabled;
   }
 
-  // --- Conversions (your mapping preserved, with β=0 -> s=0 handled robustly) ---
+  // --- Conversion: Classical -> RD ---
   function convertClassicalToRD() {
     if (suppress) return;
 
@@ -179,43 +191,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const k = 1 / D0;
     const r = 1 - (alpha * D0);
 
-    // If β = 0, enforce the single-hit limit s = 0 directly (avoid 0/0 or ill-conditioning).
-    if (Math.abs(beta) <= 0) {
+    // BRANCH: beta -> 0 implies s = 0
+    if (Math.abs(beta) <= B_EPS) {
       suppress = true;
       inputs.k.value = k.toFixed(6);
       inputs.r.value = r.toFixed(6);
-      inputs.s.value = (0).toFixed(6);
+      inputs.s.value = "0";
       suppress = false;
-
       validateAll(false);
       return;
     }
 
-    // If r is extremely close to 0 and β > 0, s formula is ill-conditioned.
-    const R_EPS = 1e-12;
+    // Singularity Check: r -> 0
     if (Math.abs(r) < R_EPS) {
       suppress = true;
       inputs.k.value = k.toFixed(6);
       inputs.r.value = r.toFixed(6);
-      inputs.s.value = '';
+      inputs.s.value = "";
       suppress = false;
-
       validateAll(false);
-      addError("Conversion singular: r = 1 − αD0 ≈ 0 makes s = (2β)/(rk) ill-conditioned for β>0. Adjust α and/or D0.", [inputs.alpha, inputs.d0, inputs.beta]);
+      addError("Conversion singular: r ≈ 0 while β > 0. s is undefined.", [inputs.alpha, inputs.d0]);
       return;
     }
 
+    // Normal Calculation
     const s = (2 * beta) / (r * k);
+
+    // Physicality check
+    if (!(Number.isFinite(s) && s >= 0)) {
+      suppress = true;
+      inputs.k.value = k.toFixed(6);
+      inputs.r.value = r.toFixed(6);
+      inputs.s.value = "";
+      suppress = false;
+      validateAll(false);
+      addError("Resulting s < 0. Incompatible classical inputs.", [inputs.beta]);
+      return;
+    }
 
     suppress = true;
     inputs.k.value = k.toFixed(6);
     inputs.r.value = r.toFixed(6);
     inputs.s.value = s.toFixed(6);
     suppress = false;
-
     validateAll(false);
   }
 
+  // --- Conversion: RD -> Classical ---
   function convertRDToClassical() {
     if (suppress) return;
 
@@ -228,17 +250,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const D0 = 1 / k;
     const alpha = k * (1 - r);
-    const beta = (r * s * k) / 2; // works fine when s = 0 -> beta = 0
+    const beta = (r * s * k) / 2;
 
     suppress = true;
     inputs.d0.value = D0.toFixed(6);
     inputs.alpha.value = alpha.toFixed(6);
     inputs.beta.value = beta.toFixed(6);
     suppress = false;
-
     validateAll(false);
   }
 
+  // --- UI Mode Switching ---
   function updateModeUI() {
     const classicalInputs = [inputs.alpha, inputs.beta, inputs.d0];
     const rdInputs = [inputs.r, inputs.s, inputs.k];
@@ -268,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnModeClassical.addEventListener('click', () => setMode('classical'));
   btnModeRD.addEventListener('click', () => setMode('rd'));
 
-  // --- Load presets ---
+  // --- Preset Loading ---
   function initData() {
     if (!window.RD_DATA) {
       cellSelect.innerHTML = '<option value="">Error: datasrc.js not found</option>';
@@ -286,157 +308,177 @@ document.addEventListener('DOMContentLoaded', () => {
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
-
     const key = cellSelect.value;
-    if (!key || !window.RD_DATA || !window.RD_DATA[key]) {
+    if (!key || !window.RD_DATA[key]) {
       cellDesc.textContent = "";
       sourceBox.classList.add('hidden');
       return;
     }
-
     const data = window.RD_DATA[key];
 
     suppress = true;
-
-    // Populate Classical
     inputs.alpha.value = (data.alpha ?? '');
     inputs.beta.value  = (data.beta  ?? '');
     inputs.d0.value    = (data.D0    ?? '');
-
-    // Clear RD + schedule
-    inputs.r.value = '';
-    inputs.s.value = '';
-    inputs.k.value = '';
-    inputs.d1.value = '';
-    inputs.n1.value = '';
-    inputs.n2.value = '';
-
+    
+    // Clear RD/Schedule inputs to force review
+    inputs.r.value = ''; inputs.s.value = ''; inputs.k.value = '';
+    inputs.d1.value = ''; inputs.n1.value = ''; inputs.n2.value = '';
     suppress = false;
 
     cellDesc.textContent = data.desc || "";
-
-    const src = data.source || "";
-    const doi = data.doi || "";
-    const url = data.url || "";
-
-    if (src || doi || url) {
-      // Safe rendering: no innerHTML
-      sourceText.textContent = src;
-      sourceDoi.textContent = doi;
-
-      if (url) {
-        sourceUrl.textContent = url;
-        sourceUrl.href = url;
-      } else {
-        sourceUrl.textContent = "";
-        sourceUrl.href = "#";
-      }
-
+    if (data.source || data.doi) {
+      sourceText.textContent = data.source || "";
+      sourceDoi.textContent = data.doi || "";
+      sourceUrl.textContent = data.url || "";
+      sourceUrl.href = data.url || "#";
       sourceBox.classList.remove('hidden');
     } else {
       sourceBox.classList.add('hidden');
     }
 
-    // Presets are classical
     currentMode = 'classical';
     updateModeUI();
     updateDpf();
     validateAll(false);
   });
 
-  // --- Attach behaviors: break preset + clear others, live validate, conversions ---
+  // --- Input Listeners ---
   function attachInputBehavior(el, onChange) {
     el.addEventListener('input', () => {
       hideResults();
-      breakPresetAndClearOthers(el);
+      breakPresetAndDetach(el);
       onChange();
       updateDpf();
       validateAll(false);
     });
   }
 
-  // Classical edits
   attachInputBehavior(inputs.alpha, () => { if (currentMode === 'classical') convertClassicalToRD(); });
   attachInputBehavior(inputs.beta,  () => { if (currentMode === 'classical') convertClassicalToRD(); });
   attachInputBehavior(inputs.d0,    () => { if (currentMode === 'classical') convertClassicalToRD(); });
 
-  // RD edits
   attachInputBehavior(inputs.r, () => { if (currentMode === 'rd') convertRDToClassical(); });
   attachInputBehavior(inputs.s, () => { if (currentMode === 'rd') convertRDToClassical(); });
   attachInputBehavior(inputs.k, () => { if (currentMode === 'rd') convertRDToClassical(); });
 
-  // Schedule edits
   attachInputBehavior(inputs.d1, () => {});
   attachInputBehavior(inputs.n1, () => {});
   attachInputBehavior(inputs.n2, () => {});
 
-  // --- Lambert W0 (principal branch) ---
+  // --- Lambert W0 (Hardened) ---
   function lambertW0(z) {
     const minZ = -1 / Math.E;
     if (!Number.isFinite(z)) return NaN;
     if (z < minZ - 1e-12) return NaN;
     if (Math.abs(z - minZ) < 1e-12) return -1;
-    if (Math.abs(z) < 1e-14) return 0;
+    if (Math.abs(z) < W_EPS) return 0;
 
     // Initial guess
-    let w = (z > 1) ? Math.log(z) : z;
+    let w;
+    if (z < 0) {
+      w = Math.log1p(z);
+      if (!Number.isFinite(w)) w = -0.5;
+      if (w < -0.999999999) w = -0.999999999;
+    } else if (z > 1) {
+      w = Math.log(z);
+    } else {
+      w = z;
+    }
 
-    // Halley iterations
-    for (let i = 0; i < 60; i++) {
+    // Halley iterations with safeguards
+    for (let i = 0; i < 80; i++) {
       const ew = Math.exp(w);
-      const wew = w * ew;
-      const f = wew - z;
+      const f = w * ew - z;
       const wp1 = w + 1;
 
-      // Halley denominator
-      const denom = ew * wp1 - (wp1 + 1) * f / (2 * wp1);
-      const dw = f / denom;
+      // Avoid singularity at w ~ -1
+      if (Math.abs(wp1) < 1e-14) {
+        w = -1 + (wp1 >= 0 ? 1e-12 : -1e-12);
+        continue;
+      }
 
-      w -= dw;
-      if (Math.abs(dw) < 1e-12) break;
+      const denom = ew * wp1 - (wp1 + 1) * f / (2 * wp1);
+      if (!Number.isFinite(denom) || Math.abs(denom) < 1e-18) {
+        const newtonDen = ew * wp1;
+        if (!Number.isFinite(newtonDen) || Math.abs(newtonDen) < 1e-18) return NaN;
+        let dwN = f / newtonDen;
+        dwN = Math.max(Math.min(dwN, 1), -1);
+        w -= dwN;
+      } else {
+        let dw = f / denom;
+        dw = Math.max(Math.min(dw, 1), -1);
+        w -= dw;
+        if (Math.abs(dw) < 1e-12) break;
+      }
     }
     return w;
   }
 
-  // --- Calculation ---
+  // --- MAIN CALCULATION ---
   btnCalc.addEventListener('click', () => {
     hideResults();
     clearErrorsAndInvalid();
-
-    // Strict enforcement for calculation
     if (!validateAll(true)) return;
-
-    const r = toNum(inputs.r.value);
-    const s = toNum(inputs.s.value);
-    const k = toNum(inputs.k.value); // kept for internal consistency; not needed for BED solve itself
 
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
     const n2 = toNum(inputs.n2.value);
 
-    // RD fields must be present in either mode
-    if (!(Number.isFinite(r) && Number.isFinite(s) && Number.isFinite(k))) {
-      addError("Internal consistency error: RD parameters are missing. Ensure α, β, D0 are valid (or enter r,s,k in RD mode).", []);
-      return;
+    // --- Classical Mode Handling ---
+    if (currentMode === 'classical') {
+      const beta = toNum(inputs.beta.value);
+
+      // Branch A: β -> 0 explicitly
+      if (Number.isFinite(beta) && Math.abs(beta) <= B_EPS) {
+        const D2 = D1;
+        const d2 = D2 / n2;
+
+        document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
+        document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
+        document.getElementById('dbg-bed1').textContent = "β=0 branch: BED = D";
+        document.getElementById('dbg-k').textContent = "—";
+        document.getElementById('dbg-w').textContent = "—";
+
+        resultContainer.classList.remove('hidden');
+        resultContainer.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      // Ensure valid conversion before proceeding
+      convertClassicalToRD();
+      
+      // CRITICAL GUARD: If conversion failed (e.g. singularity), stop here.
+      if (btnCalc.disabled) return;
     }
 
-    if (!(r < 1)) {
+    // --- RD Parameter Extraction ---
+    const r = toNum(inputs.r.value);
+    const s = toNum(inputs.s.value);
+    const k = toNum(inputs.k.value);
+
+    // Verify finite values (catches missing or NaN results from failed conversions)
+    if (!needFinite("r", r, [inputs.r])) return;
+    if (!needFinite("s", s, [inputs.s])) return;
+    if (currentMode === 'rd' && !needFinite("k", k, [inputs.k])) return;
+
+    // Check Bounds
+    if (!(r < 1) || (1 - r) <= ONE_R_EPS) {
       addError("Parameter error: r must be strictly < 1.", [inputs.r]);
       return;
     }
+    if (!(s >= 0)) {
+      addError("Parameter error: s must be non-negative.", [inputs.s]);
+      return;
+    }
 
-    const one_r = 1 - r;
-
-    // Two-case solver:
-    // CASE B: s = 0 limit -> BED = D -> isoeffect => D2 = D1
-    const S_EPS = 1e-12;
+    // --- Branch B: s -> 0 implies D2 = D1 ---
     if (Math.abs(s) <= S_EPS) {
       const D2 = D1;
       const d2 = D2 / n2;
 
       document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
       document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
-
       document.getElementById('dbg-bed1').textContent = "limit (s=0): BED = D";
       document.getElementById('dbg-k').textContent = "—";
       document.getElementById('dbg-w').textContent = "—";
@@ -446,31 +488,28 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // CASE A: s > 0 full formula
-    if (s < 0) {
-      addError("Parameter error: s must be non-negative (s=0 allowed).", [inputs.s]);
-      return;
-    }
-
-    const Dq = r / s;          // safe since s > 0
+    // --- General Case: Lambert-W Solve ---
+    const one_r = 1 - r;
     const d1 = D1 / n1;
 
-    // BED(D,n;r,s) = D/(1-r) - (n Dq)/(1-r) (1-exp(-s D/n))
-    const BED1 = (D1 / one_r) - (Dq * n1 / one_r) * (1 - Math.exp(-s * d1));
+    // Use expm1 for precision when s*d1 is small
+    const x = -s * d1;
+    const oneMinusExp = -Math.expm1(x); // 1 - exp(-s*d1)
 
-    // Lambert-W solution
+    const BED1 = (D1 / one_r) - ((n1 * r) / (s * one_r)) * oneMinusExp;
+
     const K = r + (s * one_r / n2) * BED1;
     const arg = -r * Math.exp(-K);
     const w_val = lambertW0(arg);
 
     if (!Number.isFinite(w_val)) {
-      addError("Lambert-W failure: non-physical combination of parameters/schedule (domain error).", []);
+      addError("Lambert-W failure: parameters out of domain.", []);
       return;
     }
 
     const D2 = (n2 / s) * (K + w_val);
     if (!(Number.isFinite(D2) && D2 > 0)) {
-      addError("Computed D2 is non-physical (≤ 0 or NaN). Check inputs.", []);
+      addError("Computed D2 is non-physical.", []);
       return;
     }
 
@@ -478,7 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
     document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
-
     document.getElementById('dbg-bed1').textContent = BED1.toFixed(6);
     document.getElementById('dbg-k').textContent = K.toFixed(6);
     document.getElementById('dbg-w').textContent = w_val.toFixed(6);
@@ -487,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resultContainer.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // --- Init ---
+  // --- Initialization ---
   initData();
   updateModeUI();
   updateDpf();
