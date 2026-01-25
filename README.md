@@ -1,26 +1,26 @@
 # Unified BED Calculator
 
-💻 Interactive web calculator for the Unified Biologically Effective Dose (BED) framework, providing closed-form isoeffect solutions for radiation therapy.
+Interactive web calculator for the **Unified Biologically Effective Dose (BED)** in the **Resilience–Depletion (RD)** framework, providing a closed-form isoeffect solution for radiotherapy fractionation comparisons.
 
-**Live Demo:** [**https://joliverapps.github.io/Unified-BED-Calculator/**](https://joliverapps.github.io/Unified-BED-Calculator/)
+**Live Demo:** [https://joliverapps.github.io/Unified-BED-Calculator/](https://joliverapps.github.io/Unified-BED-Calculator/)
 
 ---
 
 > ⚠️ **Clinical Disclaimer**
 >
-> This is a non-validated, non-approved application intended solely to demonstrate the feasibility of the calculation presented in the associated paper. **It must not be used for any clinical purpose.** Usage is the sole responsibility of the end-user.
+> This is a non-validated, non-approved research demonstration tool intended solely to illustrate the calculations presented in the associated manuscript. **It must not be used for clinical decision-making.** Use is entirely at the end-user’s risk.
 
 ## Overview
 
 This is a simple, static web application (HTML/JS/Tailwind CSS) that serves as the companion tool for the paper: *"Resilience-Depletion Hypothesis: Unifying Biological Effective Dose (BED) from conventional to hypofractionated radiotherapy"*.
 
-The standard Linear-Quadratic (LQ) model fails to accurately predict cell survival at the high doses per fraction used in SBRT and SRS. This tool implements the survival model derived in our paper, which is based on the postulate of **proportional depletion of resilience**.
+*First-principles Resilience-Depletion (RD) model unifying BED from conventional to hypofractionated dose.*
 
-This framework yields a single, unified Biologically Effective Dose (BED) that is valid across all dose regimes, from conventional fractionation to extreme hypofractionation. This calculator provides a practical, closed-form solution to find isoeffective dose schedules using this new model.
+The standard Linear–Quadratic (LQ) model is widely used but can mischaracterize survival and isoeffect at the high dose-per-fraction regimes used in SBRT/SRS. This tool implements the **RD survival-derived BED** from the paper, based on the postulate of **proportional depletion of resilience**, yielding a **single BED definition** that remains well-behaved from conventional fractionation to extreme hypofractionation.
 
 ![Screenshot of the Unified BED Calculator](uBED_app_v1.png)
 
-## The Model
+## The Model Implemented
 
 The calculation is based on the unified Biologically Effective Dose (BED) derived in the paper. Unlike the LQ model, this formulation describes the full dose-response curve, including the high-dose linear tail.
 
@@ -42,7 +42,7 @@ $$
 D_2 = \frac{n_2}{s}\Bigl(K+W_0\!\bigl(-r e^{-K}\bigr)\Bigr)
 $$
 
-Where the intermediate term $K$ is defined as:
+This design choice is deliberate: many published datasets provide \(\alpha\), \(\beta\), and (historically) a terminal-slope scale such as \(D_0\). The calculator therefore preserves the paper’s operational mapping without requiring ad hoc reparameterizations.
 
 $$
 K \coloneqq r + \frac{s(1-r)}{n_2} \mathrm{BED}(D_1,n_1;r,s)
