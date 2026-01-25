@@ -8,10 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
-  <!-- Data source -->
   <script id="data-source-script" src="./datasrc.js"></script>
 
-  <!-- MathJax -->
   <script>
     window.MathJax = {
       tex: { inlineMath: [['\\(','\\)'], ['$', '$']] },
@@ -33,9 +31,9 @@
 
     <div class="text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2 text-sm">Isoeffect via Lambert-\(W\) (with \(s=0\) limit handled)</p>
+      <p class="text-slate-500 mt-2 text-sm">Exact isoeffect solution via Lambert-\(W\)</p>
       <div class="my-3 text-sm overflow-x-auto text-slate-600">
-        $$ \mathrm{BED}(D,n) = \frac{D}{1-r} - \frac{n D_q}{1-r}\Bigl(1-e^{-s D/n}\Bigr), \quad D_q=\frac{r}{s} $$
+        $$ \mathrm{BED}(D,n) = \frac{D}{1-r} - \frac{n r}{s(1-r)}\Bigl(1-e^{-s D/n}\Bigr) $$
       </div>
     </div>
 
@@ -60,7 +58,7 @@
 
         <div id="source-box" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 fade-in">
           <div class="mb-1">
-            <span class="font-bold">Source memo:</span>
+            <span class="font-bold">Source:</span>
             <div id="source-text" class="mt-1 text-slate-700"></div>
           </div>
           <div class="grid grid-cols-1 gap-1 mt-2">
