@@ -29,6 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentMode = 'classical'; // 'classical' | 'rd'
   let suppress = false;
 
+  // --- NEW: tolerance and limit handler for s -> 0 ---
+  // In the theory: s -> 0 implies single-hit limit, BED -> D, and isoeffect => D2 = D1.
+  const S_EPS = 1e-10;
+
   // UI helpers
   const setActive = (btn) => {
     btn.classList.remove('bg-transparent', 'text-slate-500', 'hover:text-slate-700');
@@ -136,9 +140,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (strict || inputs.k.value !== "") {
       if (!(Number.isFinite(k) && k > 0)) addError("k must be strictly positive.", [inputs.k]);
     }
+
+    // IMPORTANT: allow s = 0 only in the limit sense (handled at calculation).
+    // For input validation UI, we still require s > 0 whenever user is trying to provide s explicitly.
+    // On strict validation, we permit |s| <= S_EPS only if beta == 0 (classical) OR user intentionally sets s≈0.
     if (strict || inputs.s.value !== "") {
-      if (!(Number.isFinite(s) && s > 0)) addError("s must be strictly positive.", [inputs.s]);
+      if (!Number.isFinite(s)) addError("s must be a finite number.", [inputs.s]);
+      // If user types s explicitly (not blank), negative is never allowed.
+      if (Number.isFinite(s) && s < 0) addError("s must be non-negative (s < 0 is not allowed).", [inputs.s]);
+      // For strict mode: allow s very small (limit case), otherwise require > 0.
+      if (strict && Number.isFinite(s) && Math.abs(s) > S_EPS && !(s > 0)) {
+        addError("s must be strictly positive (or approximately 0 only for the single-hit limit).", [inputs.s]);
+      }
+      // For non-strict: keep the old behavior (if filled, require > 0) to avoid confusion.
+      if (!strict && Number.isFinite(s) && inputs.s.value !== "" && !(s > 0)) {
+        addError("s must be strictly positive.", [inputs.s]);
+      }
     }
+
     if (strict || inputs.r.value !== "") {
       if (!(Number.isFinite(r) && r < 1)) addError("r must be finite and strictly < 1 (r = 1 is not allowed).", [inputs.r]);
     }
@@ -171,9 +190,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const k = 1 / D0;
     const r = 1 - (alpha * D0);
 
-    // singular if r ~ 0
+    // Compute s = 2 beta / (r k). This has two important singular limits:
+    //  (i) beta -> 0 => s -> 0 (single-hit limit): this is allowed and handled downstream.
+    //  (ii) r -> 0 => s ill-conditioned; keep your warning behavior.
+    let s;
+
     if (Math.abs(r) < 1e-10) {
-      // Populate r,k; s left blank
+      // Populate r,k; s left blank (ill-conditioned)
       suppress = true;
       inputs.k.value = k.toFixed(6);
       inputs.r.value = r.toFixed(6);
@@ -183,16 +206,19 @@ document.addEventListener('DOMContentLoaded', () => {
       validateAll(false);
       addError("Conversion singular: r = 1 - αD0 ≈ 0 makes s = (2β)/(rk) ill-conditioned. Adjust α and/or D0.", [inputs.alpha, inputs.d0, inputs.beta]);
       return;
+    } else {
+      s = (2 * beta) / (r * k);
     }
-
-    const s = (2 * beta) / (r * k);
 
     suppress = true;
     inputs.k.value = k.toFixed(6);
     inputs.r.value = r.toFixed(6);
+    // If beta is exactly 0, s will be exactly 0. Keep it explicit so the limit branch triggers.
     inputs.s.value = s.toFixed(6);
     suppress = false;
 
+    // Do not hard-error on s==0 here; calculation will branch to the limit.
+    clearErrorsAndInvalid();
     validateAll(false);
   }
 
@@ -203,8 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = toNum(inputs.s.value);
     const k = toNum(inputs.k.value);
 
-    if (!(Number.isFinite(r) && Number.isFinite(s) && Number.isFinite(k) && s > 0 && k > 0)) return;
+    // Here, if user provides s ~ 0, then beta ~ 0. Allow that (non-negative).
+    if (!(Number.isFinite(r) && Number.isFinite(s) && Number.isFinite(k) && k > 0)) return;
     if (!(r < 1)) return;
+    if (s < 0) return;
 
     const D0 = 1 / k;
     const alpha = k * (1 - r);
@@ -378,14 +406,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const n1 = toNum(inputs.n1.value);
     const n2 = toNum(inputs.n2.value);
 
-    // If user is in classical mode but RD fields are empty (should not happen if classical filled),
-    // force conversion check.
     if (!(Number.isFinite(r) && Number.isFinite(s) && Number.isFinite(k))) {
       addError("Internal consistency error: RD parameters are missing. Ensure α, β, D0 are valid (or enter r,s,k in RD mode).", []);
       return;
     }
 
-    // BED and isoeffect solve
+    // --- NEW: s -> 0 limit (single-hit) branch ---
+    // Theory: as s -> 0, H(x) -> α x, BED -> D, and isoeffect => D2 = D1 regardless of n2.
+    // Implementation: if |s| <= S_EPS, bypass Lambert-W formula to avoid catastrophic cancellation.
+    if (Math.abs(s) <= S_EPS) {
+      const D2 = D1;
+      const d2 = D2 / n2;
+
+      document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
+      document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
+
+      // Debug values: in the limit, BED1 = D1, K -> r + (s*(1-r)/n2)*D1 -> r, W -> W0(-r e^{-r}) = -r
+      document.getElementById('dbg-bed1').textContent = D1.toFixed(6);
+      document.getElementById('dbg-k').textContent = r.toFixed(6);
+      document.getElementById('dbg-w').textContent = (-r).toFixed(6);
+
+      // Optional: warn user we used the limit (non-fatal, does not disable button)
+      const p = document.createElement('p');
+      p.className = 'text-xs text-slate-500 mt-2';
+      p.textContent = "Note: s ≈ 0 detected; using the single-hit limit (BED = D, so D2 = D1).";
+      // Ensure we don't stack multiple notes:
+      const details = document.querySelector('#result-container details');
+      if (details && !details.dataset.limitNote) {
+        details.dataset.limitNote = "1";
+        details.parentElement.insertBefore(p, details);
+      }
+
+      resultContainer.classList.remove('hidden');
+      resultContainer.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    // BED and isoeffect solve (regular case s > 0)
     const one_r = 1 - r;
     const Dq = r / s;
     const d1 = D1 / n1;
