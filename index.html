@@ -7,11 +7,11 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="./styles.css"/>
 
-  <!-- Data Source -->
-  <script src="./datasrc.js"></script>
+  <!-- Data source -->
+  <script id="data-source-script" src="./datasrc.js"></script>
 
+  <!-- MathJax -->
   <script>
     window.MathJax = {
       tex: { inlineMath: [['\\(','\\)'], ['$', '$']] },
@@ -19,20 +19,21 @@
     };
   </script>
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
-
   <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
 
     <div class="bg-indigo-50 border-l-4 border-indigo-500 text-indigo-800 p-4 rounded-lg">
       <p class="font-bold text-xs uppercase tracking-wide">RD Framework</p>
-      <p class="text-xs mt-1">Inputs are \(\alpha, \beta, D_0\) (separately). RD parameters \((r,s,k)\) are derived.</p>
+      <p class="text-xs mt-1">Inputs require \(\alpha\), \(\beta\), and \(D_0\) (separately). App converts internally to RD \((r,s,k)\).</p>
     </div>
 
     <div class="text-center">
       <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2 text-sm">Isoeffect via Lambert-\(W\)</p>
+      <p class="text-slate-500 mt-2 text-sm">Isoeffect via Lambert-\(W\) (with \(s=0\) limit handled)</p>
       <div class="my-3 text-sm overflow-x-auto text-slate-600">
         $$ \mathrm{BED}(D,n) = \frac{D}{1-r} - \frac{n D_q}{1-r}\Bigl(1-e^{-s D/n}\Bigr), \quad D_q=\frac{r}{s} $$
       </div>
@@ -51,25 +52,22 @@
         <div class="flex items-center justify-between gap-4">
           <label for="cell-line-select" class="text-sm font-medium text-slate-600">Preset:</label>
           <select id="cell-line-select" class="w-3/5 md:w-2/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition text-sm">
-            <option value="">— Select Tumor Type —</option>
+            <option value="">Loading data...</option>
           </select>
         </div>
 
         <p id="cell-desc" class="text-xs text-slate-400 mt-2 italic text-right min-h-[1rem]"></p>
 
-        <div id="source-box" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 fade-in space-y-2">
-          <div>
-            <span class="font-bold text-slate-700">Source:</span>
-            <span id="source-text" class="text-slate-600"></span>
+        <div id="source-box" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 fade-in">
+          <div class="mb-1">
+            <span class="font-bold">Source memo:</span>
+            <div id="source-text" class="mt-1 text-slate-700"></div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 gap-1 mt-2">
+            <div><span class="font-bold">DOI:</span> <span id="source-doi" class="text-slate-700"></span></div>
             <div>
-              <span class="font-bold text-slate-700">DOI:</span>
-              <span id="source-doi" class="text-slate-600 break-words"></span>
-            </div>
-            <div>
-              <span class="font-bold text-slate-700">URL:</span>
-              <a id="source-url" class="text-indigo-700 underline break-words" href="#" target="_blank" rel="noopener noreferrer"></a>
+              <span class="font-bold">URL:</span>
+              <a id="source-url" class="underline text-slate-700" href="#" target="_blank" rel="noopener noreferrer"></a>
             </div>
           </div>
         </div>
@@ -129,7 +127,7 @@
         </div>
         <div>
           <label class="text-sm font-medium text-slate-600">Fractions \(n_1\)</label>
-          <input type="number" id="fractions-n1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Positive integer">
+          <input type="number" id="fractions-n1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
         </div>
       </div>
       <div class="text-xs text-right text-slate-500">
@@ -141,7 +139,7 @@
       <h2 class="text-lg font-semibold text-slate-700">3. Target Schedule</h2>
       <div class="flex items-center justify-between gap-4">
         <label class="text-sm font-medium text-slate-600">New Fractions \(n_2\):</label>
-        <input type="number" id="fractions-n2" class="w-1/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Positive integer">
+        <input type="number" id="fractions-n2" class="w-1/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
       </div>
     </div>
 
@@ -159,9 +157,9 @@
       <details class="mt-4 border border-slate-200 rounded-lg">
         <summary class="text-xs text-slate-500 p-2 hover:bg-slate-50 font-medium">Show Calculation Details</summary>
         <div class="text-xs text-slate-500 font-mono bg-slate-50 p-3 rounded-b-lg space-y-1">
-          <p>BED_ref: <span id="dbg-bed1"></span></p>
-          <p>K_iso: <span id="dbg-k"></span></p>
-          <p>W(z): <span id="dbg-w"></span></p>
+          <p>BED\(_{\text{ref}}\): <span id="dbg-bed1"></span></p>
+          <p>\(K\): <span id="dbg-k"></span></p>
+          <p>\(W(z)\): <span id="dbg-w"></span></p>
         </div>
       </details>
     </div>
@@ -169,7 +167,6 @@
     <div class="text-center text-xs text-slate-400 pt-6 border-t border-slate-200">
       <p>Data Source: <a href="./datasrc.js" target="_blank" class="underline hover:text-slate-600">datasrc.js</a></p>
     </div>
-
   </div>
 
   <script src="./app.js"></script>
