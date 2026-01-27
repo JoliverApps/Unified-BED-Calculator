@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const resultContainer = document.getElementById('result-container');
   const lblDpf = document.getElementById('original-dpf');
+  const bedText = document.getElementById('bed-text');
 
   const inputs = {
     // Classical
@@ -297,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // robust check in case any legacy values sneak in
     const isVerified = (v) => v === true || v === 1 || v === "true" || v === "True";
 
     const keysVerified = Object.keys(window.RD_DATA)
@@ -324,6 +324,10 @@ document.addEventListener('DOMContentLoaded', () => {
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
+
+    // Clear BED display whenever preset changes
+    if (bedText) bedText.textContent = "";
+
     const key = cellSelect.value;
     if (!key || !window.RD_DATA[key]) {
       cellDesc.textContent = "";
@@ -364,6 +368,10 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('input', () => {
       hideResults();
       breakPresetAndDetach(el);
+
+      // Clear BED display on any edit that could affect it
+      if (bedText) bedText.textContent = "";
+
       onChange();
       updateDpf();
       validateAll(false);
@@ -435,6 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCalc.addEventListener('click', () => {
     hideResults();
     clearErrorsAndInvalid();
+    if (bedText) bedText.textContent = "";
+
     if (!validateAll(true)) return;
 
     const D1 = toNum(inputs.d1.value);
@@ -452,6 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
         document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
+        if (bedText) bedText.textContent = `BED(D1,n1,r,s): ${D1.toFixed(2)} Gy`;
+
         document.getElementById('dbg-bed1').textContent = "β=0 branch: BED = D";
         document.getElementById('dbg-k').textContent = "—";
         document.getElementById('dbg-w').textContent = "—";
@@ -495,6 +507,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
       document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
+      if (bedText) bedText.textContent = `BED(D1,n1,r,s): ${D1.toFixed(2)} Gy`;
+
       document.getElementById('dbg-bed1').textContent = "limit (s=0): BED = D";
       document.getElementById('dbg-k').textContent = "—";
       document.getElementById('dbg-w').textContent = "—";
@@ -533,6 +547,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
     document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
+    if (bedText) bedText.textContent = `BED(D1,n1,r,s): ${BED1.toFixed(2)} Gy`;
+
     document.getElementById('dbg-bed1').textContent = BED1.toFixed(6);
     document.getElementById('dbg-k').textContent = K.toFixed(6);
     document.getElementById('dbg-w').textContent = w_val.toFixed(6);
