@@ -105,8 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- UX: Break Preset (Detach) ---
-  // Improved behavior: Keep values, just clear the dropdown so user can edit.
-  function breakPresetAndDetach(editedEl) {
+  // Intended ONLY when editing tissue parameters (α, β, D0) or manual RD params (r,s,k).
+  function breakPresetAndDetach() {
     if (suppress) return;
     if (cellSelect.value === "") return;
 
@@ -118,13 +118,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Validation Logic (Mode Aware) ---
-  function validateAll(strict = false) {
+  // IMPORTANT: Schedule validation happens ONLY on Calculate (validateSchedule=true).
+  function validateAll(strict = false, validateSchedule = false) {
     clearErrorsAndInvalid();
 
-    // Determine relevance based on mode
     const scheduleSet = new Set([inputs.d1, inputs.n1, inputs.n2]);
+
     const shouldValidate = (el) => {
-      if (scheduleSet.has(el)) return true;
+      // Schedule fields validate only when requested (on Calculate)
+      if (scheduleSet.has(el)) return validateSchedule;
+
       if (el.disabled) return false; // Ignore disabled fields
       if (strict) return true;
       return el.value !== "";
@@ -165,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!(Number.isFinite(s) && s >= 0)) addError("s must be non-negative (0 is allowed).", [inputs.s]);
     }
 
-    // --- Schedule Validation ---
+    // --- Schedule Validation (ONLY ON CALCULATE) ---
     if (shouldValidate(inputs.d1)) {
       if (!(Number.isFinite(D1) && D1 > 0)) addError("Total Dose D1 must be > 0.", [inputs.d1]);
     }
@@ -180,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Conversion: Classical -> RD ---
+  // Compute r,s,k ONLY when α,β,D0 are all valid/finite. Otherwise do nothing.
   function convertClassicalToRD() {
     if (suppress) return;
 
@@ -187,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const beta  = toNum(inputs.beta.value);
     const D0    = toNum(inputs.d0.value);
 
+    // Only compute when data necessary to compute k,r,s exists
     if (!(Number.isFinite(alpha) && Number.isFinite(beta) && Number.isFinite(D0) && D0 > 0)) return;
 
     const k = 1 / D0;
@@ -199,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
       inputs.r.value = r.toFixed(6);
       inputs.s.value = "0";
       suppress = false;
-      validateAll(false);
+      validateAll(false, false);
       return;
     }
 
@@ -210,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
       inputs.r.value = r.toFixed(6);
       inputs.s.value = "";
       suppress = false;
-      validateAll(false);
+      validateAll(false, false);
       addError("Conversion singular: r ≈ 0 while β > 0. s is undefined.", [inputs.alpha, inputs.d0]);
       return;
     }
@@ -225,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
       inputs.r.value = r.toFixed(6);
       inputs.s.value = "";
       suppress = false;
-      validateAll(false);
+      validateAll(false, false);
       addError("Resulting s < 0. Incompatible classical inputs.", [inputs.beta]);
       return;
     }
@@ -235,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputs.r.value = r.toFixed(6);
     inputs.s.value = s.toFixed(6);
     suppress = false;
-    validateAll(false);
+    validateAll(false, false);
   }
 
   // --- Conversion: RD -> Classical ---
@@ -258,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputs.alpha.value = alpha.toFixed(6);
     inputs.beta.value = beta.toFixed(6);
     suppress = false;
-    validateAll(false);
+    validateAll(false, false);
   }
 
   // --- UI Mode Switching ---
@@ -271,6 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
       setInactive(btnModeRD);
       classicalInputs.forEach(el => el.disabled = false);
       rdInputs.forEach(el => el.disabled = true);
+
+      // attempt conversion only when data is complete (function already guards)
       convertClassicalToRD();
     } else {
       setActive(btnModeRD);
@@ -284,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function setMode(mode) {
     currentMode = mode;
     hideResults();
-    validateAll(false);
+    validateAll(false, false);
     updateModeUI();
   }
 
@@ -324,8 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
-
-    // Clear BED display whenever preset changes
     if (bedText) bedText.textContent = "";
 
     const key = cellSelect.value;
@@ -334,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceBox.classList.add('hidden');
       return;
     }
+
     const data = window.RD_DATA[key];
 
     suppress = true;
@@ -360,35 +366,41 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMode = 'classical';
     updateModeUI();
     updateDpf();
-    validateAll(false);
+    validateAll(false, false);
   });
 
   // --- Input Listeners ---
-  function attachInputBehavior(el, onChange) {
+  // detachPreset=true ONLY for tissue inputs (α,β,D0 and manual r,s,k).
+  // Schedule edits (D1,n1,n2) must NOT detach preset.
+  function attachInputBehavior(el, onChange, detachPreset = false) {
     el.addEventListener('input', () => {
       hideResults();
-      breakPresetAndDetach(el);
 
-      // Clear BED display on any edit that could affect it
+      if (detachPreset) {
+        breakPresetAndDetach();
+      }
+
       if (bedText) bedText.textContent = "";
 
       onChange();
       updateDpf();
-      validateAll(false);
+      validateAll(false, false); // schedule not validated while typing
     });
   }
 
-  attachInputBehavior(inputs.alpha, () => { if (currentMode === 'classical') convertClassicalToRD(); });
-  attachInputBehavior(inputs.beta,  () => { if (currentMode === 'classical') convertClassicalToRD(); });
-  attachInputBehavior(inputs.d0,    () => { if (currentMode === 'classical') convertClassicalToRD(); });
+  // Tissue params: detach preset (custom)
+  attachInputBehavior(inputs.alpha, () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
+  attachInputBehavior(inputs.beta,  () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
+  attachInputBehavior(inputs.d0,    () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
 
-  attachInputBehavior(inputs.r, () => { if (currentMode === 'rd') convertRDToClassical(); });
-  attachInputBehavior(inputs.s, () => { if (currentMode === 'rd') convertRDToClassical(); });
-  attachInputBehavior(inputs.k, () => { if (currentMode === 'rd') convertRDToClassical(); });
+  attachInputBehavior(inputs.r, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
+  attachInputBehavior(inputs.s, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
+  attachInputBehavior(inputs.k, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
 
-  attachInputBehavior(inputs.d1, () => {});
-  attachInputBehavior(inputs.n1, () => {});
-  attachInputBehavior(inputs.n2, () => {});
+  // Schedule: do NOT detach preset
+  attachInputBehavior(inputs.d1, () => {}, false);
+  attachInputBehavior(inputs.n1, () => {}, false);
+  attachInputBehavior(inputs.n2, () => {}, false);
 
   // --- Lambert W0 (Hardened) ---
   function lambertW0(z) {
@@ -445,7 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
     clearErrorsAndInvalid();
     if (bedText) bedText.textContent = "";
 
-    if (!validateAll(true)) return;
+    // Validate schedule ONLY here
+    if (!validateAll(true, true)) return;
 
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
@@ -473,10 +486,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Ensure valid conversion before proceeding
+      // Ensure valid conversion before proceeding (conversion guarded by completeness)
       convertClassicalToRD();
 
-      // CRITICAL GUARD: If conversion failed (e.g. singularity), stop here.
+      // If conversion/validation raised a non-schedule error, stop
       if (btnCalc.disabled) return;
     }
 
@@ -485,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = toNum(inputs.s.value);
     const k = toNum(inputs.k.value);
 
-    // Verify finite values (catches missing or NaN results from failed conversions)
     if (!needFinite("r", r, [inputs.r])) return;
     if (!needFinite("s", s, [inputs.s])) return;
     if (currentMode === 'rd' && !needFinite("k", k, [inputs.k])) return;
@@ -522,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const one_r = 1 - r;
     const d1 = D1 / n1;
 
-    // Use expm1 for precision when s*d1 is small
     const x = -s * d1;
     const oneMinusExp = -Math.expm1(x); // 1 - exp(-s*d1)
 
@@ -561,5 +572,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initData();
   updateModeUI();
   updateDpf();
-  validateAll(false);
+  validateAll(false, false);
 });
