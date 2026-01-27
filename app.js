@@ -290,14 +290,30 @@ document.addEventListener('DOMContentLoaded', () => {
   btnModeClassical.addEventListener('click', () => setMode('classical'));
   btnModeRD.addEventListener('click', () => setMode('rd'));
 
-  // --- Preset Loading ---
+  // --- Preset Loading (VERIFIED ONLY) ---
   function initData() {
     if (!window.RD_DATA) {
       cellSelect.innerHTML = '<option value="">Error: datasrc.js not found</option>';
       return;
     }
-    cellSelect.innerHTML = '<option value="">— Select Tumor Type —</option>';
-    Object.keys(window.RD_DATA).sort().forEach(key => {
+
+    // robust check in case any legacy values sneak in
+    const isVerified = (v) => v === true || v === 1 || v === "true" || v === "True";
+
+    const keysVerified = Object.keys(window.RD_DATA)
+      .filter((key) => isVerified(window.RD_DATA[key]?.verified))
+      .sort();
+
+    cellSelect.innerHTML = '<option value="">— Select Verified Cell Line —</option>';
+
+    if (keysVerified.length === 0) {
+      cellSelect.innerHTML = '<option value="">No verified datasets available</option>';
+      cellSelect.disabled = true;
+      return;
+    }
+
+    cellSelect.disabled = false;
+    keysVerified.forEach(key => {
       const opt = document.createElement('option');
       opt.value = key;
       opt.textContent = key;
@@ -320,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputs.alpha.value = (data.alpha ?? '');
     inputs.beta.value  = (data.beta  ?? '');
     inputs.d0.value    = (data.D0    ?? '');
-    
+
     // Clear RD/Schedule inputs to force review
     inputs.r.value = ''; inputs.s.value = ''; inputs.k.value = '';
     inputs.d1.value = ''; inputs.n1.value = ''; inputs.n2.value = '';
@@ -447,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Ensure valid conversion before proceeding
       convertClassicalToRD();
-      
+
       // CRITICAL GUARD: If conversion failed (e.g. singularity), stop here.
       if (btnCalc.disabled) return;
     }
