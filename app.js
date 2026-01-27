@@ -328,10 +328,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Preset Select ---
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
     if (bedText) bedText.textContent = "";
+
+    // Preserve current mode (do NOT force classical)
+    const prevMode = currentMode;
 
     const key = cellSelect.value;
     if (!key || !window.RD_DATA[key]) {
@@ -343,14 +347,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = window.RD_DATA[key];
 
     suppress = true;
+
+    // Load preset (given as classical inputs)
     inputs.alpha.value = (data.alpha ?? '');
     inputs.beta.value  = (data.beta  ?? '');
     inputs.d0.value    = (data.D0    ?? '');
 
-    // Clear RD/Schedule inputs to force review
-    inputs.r.value = ''; inputs.s.value = ''; inputs.k.value = '';
-    inputs.d1.value = ''; inputs.n1.value = ''; inputs.n2.value = '';
+    // Clear derived + schedule inputs to force review
+    inputs.r.value = '';
+    inputs.s.value = '';
+    inputs.k.value = '';
+    inputs.d1.value = '';
+    inputs.n1.value = '';
+    inputs.n2.value = '';
+
     suppress = false;
+
+    // Recompute RD params immediately whenever α,β,D0 are complete
+    convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
     if (data.source || data.doi) {
@@ -363,8 +377,10 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceBox.classList.add('hidden');
     }
 
-    currentMode = 'classical';
+    // Restore the user's mode
+    currentMode = prevMode;
     updateModeUI();
+
     updateDpf();
     validateAll(false, false);
   });
@@ -534,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const one_r = 1 - r;
     const d1 = D1 / n1;
 
+    // Use expm1 for precision when s*d1 is small
     const x = -s * d1;
     const oneMinusExp = -Math.expm1(x); // 1 - exp(-s*d1)
 
