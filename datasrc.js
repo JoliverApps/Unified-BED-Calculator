@@ -14,6 +14,7 @@
  */
 
 window.RD_DATA = {
+
   "Rhabdomyosarcoma (Pediatric)": {
     alpha: 0.0406,
     beta: 0.0045,
@@ -36,7 +37,7 @@ window.RD_DATA = {
     verified: true
   },
 
-  /* UNVERIFIED ---------------------------------------------------- */
+  /* UNVERIFIED----------------------------------------------------*/
 
   "Glioblastoma (U87MG - Stem-Like)": {
     alpha: 0.098,
@@ -59,4 +60,5 @@ window.RD_DATA = {
     url: "https://books.google.com/books?id=QruDQAAQBAJ",
     verified: false
   }
+
 };
