@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cellDesc = document.getElementById('cell-desc');
   const sourceBox = document.getElementById('source-box');
   const sourceText = document.getElementById('source-text');
-  const sourceUrl = document.getElementById('source-url');
+  const sourceUrl = document.getElementById('source-url'); // DOI element removed
 
   const errorContainer = document.getElementById('error-container');
   const btnModeClassical = document.getElementById('mode-classical');
@@ -357,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
+    // Removed DOI check here
     if (data.source || data.url) {
       sourceText.textContent = data.source || "";
       sourceUrl.textContent = data.url || "";
@@ -454,15 +455,16 @@ document.addEventListener('DOMContentLoaded', () => {
     dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
 
     // 4. EQD2 Calculation
-    // Denominator for 2 Gy fraction:
-    // Denom = 2/(1-r) - (r/(s*(1-r))) * (1 - e^(-2s))
-    // Limit s->0: Denom = 2.
+    // Formula: n_2Gy = BED / BED_fraction(2Gy)
+    // BED_fraction(2Gy) = 2/(1-r) - [r / (s*(1-r))] * (1 - e^-2s)
     let denom2Gy;
+    
     if (Math.abs(s_val) <= S_EPS) {
-        denom2Gy = 2; // (2 Gy)/(1-r) with r->0? No, limit of expression is just dose d=2.
+        // Linear limit (s->0): BED_fraction(d) = d. So for 2Gy, it is 2.
+        denom2Gy = 2;
     } else {
         const one_r = 1 - r_val;
-        // Use expm1 for precision
+        // Use expm1 for precision: 1 - e^(-2s) = -expm1(-2s)
         const termExp2 = -Math.expm1(-2 * s_val); 
         denom2Gy = (2 / one_r) - ((r_val) / (s_val * one_r)) * termExp2;
     }
@@ -498,17 +500,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Classical Mode Handling ---
     if (currentMode === 'classical') {
       const beta = toNum(inputs.beta.value);
-      // Branch A: β -> 0 explicitly
+      // Branch A: β -> 0 explicitly (Linear Model)
       if (Number.isFinite(beta) && Math.abs(beta) <= B_EPS) {
         // Linear model: BED = D1
         const D2 = D1;
-        // Mock RD params for display function (r, s=0)
-        // Note: r is computed inside convertClassicalToRD but might not be in inputs if suppress was on.
+        // Mock RD params for display function (r_calc, s=0)
         // Re-calculate local r for EQD2
         const alpha = toNum(inputs.alpha.value);
         const D0 = toNum(inputs.d0.value);
         const r_calc = 1 - (alpha * D0);
         
+        // Pass s=0 to force linear logic in helper
         updateResultUI(D1, D2, n2, r_calc, 0, null, null);
         return;
       }
