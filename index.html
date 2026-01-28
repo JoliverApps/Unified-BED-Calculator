@@ -146,11 +146,35 @@
     </button>
 
     <div id="result-container" class="hidden animate-fade-in mt-6">
-      <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-6 text-center">
-        <h3 class="text-xs uppercase tracking-wide text-indigo-500 font-bold">Required Total Dose \(D_2\)</h3>
-        <p id="result-text" class="text-4xl font-bold text-indigo-700 my-2"></p>
-        <p id="dose-per-fraction-text" class="text-lg text-indigo-600 font-medium"></p>
-        <p id="bed-text" class="text-sm text-indigo-600 font-medium mt-2"></p>
+      <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
+        <div class="space-y-3">
+          
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">BED</span>
+            <span id="bed-text" class="text-lg font-bold text-indigo-700"></span>
+          </div>
+
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Total Dose \(D_2\)</span>
+            <span id="result-text" class="text-lg font-bold text-indigo-700"></span>
+          </div>
+
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Dose Per Fraction</span>
+            <span id="dose-per-fraction-text" class="text-lg font-bold text-indigo-700"></span>
+          </div>
+
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">Fractions (2 Gy/fx)</span>
+            <span id="eqd2-fractions-text" class="text-lg font-bold text-indigo-700"></span>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">Total Dose (EQD2)</span>
+            <span id="eqd2-total-text" class="text-lg font-bold text-indigo-700"></span>
+          </div>
+
+        </div>
       </div>
 
       <details class="mt-4 border border-slate-200 rounded-lg">
