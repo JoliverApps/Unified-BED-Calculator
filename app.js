@@ -14,7 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const resultContainer = document.getElementById('result-container');
   const lblDpf = document.getElementById('original-dpf');
+
+  // Result Fields
   const bedText = document.getElementById('bed-text');
+  const resultText = document.getElementById('result-text');
+  const dpfText = document.getElementById('dose-per-fraction-text');
+  const eqd2FractionsText = document.getElementById('eqd2-fractions-text');
+  const eqd2TotalText = document.getElementById('eqd2-total-text');
 
   const inputs = {
     // Classical
@@ -105,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- UX: Break Preset (Detach) ---
-  // Intended ONLY when editing tissue parameters (α, β, D0) or manual RD params (r,s,k).
   function breakPresetAndDetach() {
     if (suppress) return;
     if (cellSelect.value === "") return;
@@ -118,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Validation Logic (Mode Aware) ---
-  // IMPORTANT: Schedule validation happens ONLY on Calculate (validateSchedule=true).
   function validateAll(strict = false, validateSchedule = false) {
     clearErrorsAndInvalid();
 
@@ -183,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Conversion: Classical -> RD ---
-  // Compute r,s,k ONLY when α,β,D0 are all valid/finite. Otherwise do nothing.
   function convertClassicalToRD() {
     if (suppress) return;
 
@@ -276,8 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
       setInactive(btnModeRD);
       classicalInputs.forEach(el => el.disabled = false);
       rdInputs.forEach(el => el.disabled = true);
-
-      // attempt conversion only when data is complete (function already guards)
       convertClassicalToRD();
     } else {
       setActive(btnModeRD);
@@ -298,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnModeClassical.addEventListener('click', () => setMode('classical'));
   btnModeRD.addEventListener('click', () => setMode('rd'));
 
-  // --- Preset Loading (VERIFIED ONLY) ---
+  // --- Preset Loading ---
   function initData() {
     if (!window.RD_DATA) {
       cellSelect.innerHTML = '<option value="">Error: datasrc.js not found</option>';
@@ -334,9 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearErrorsAndInvalid();
     if (bedText) bedText.textContent = "";
 
-    // Preserve current mode (do NOT force classical)
     const prevMode = currentMode;
-
     const key = cellSelect.value;
     if (!key || !window.RD_DATA[key]) {
       cellDesc.textContent = "";
@@ -345,25 +344,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const data = window.RD_DATA[key];
-
     suppress = true;
 
-    // Load preset (given as classical inputs)
     inputs.alpha.value = (data.alpha ?? '');
     inputs.beta.value  = (data.beta  ?? '');
     inputs.d0.value    = (data.D0    ?? '');
 
-    // Clear derived + schedule inputs to force review
-    inputs.r.value = '';
-    inputs.s.value = '';
-    inputs.k.value = '';
-    inputs.d1.value = '';
-    inputs.n1.value = '';
-    inputs.n2.value = '';
+    // Clear derived inputs
+    inputs.r.value = ''; inputs.s.value = ''; inputs.k.value = '';
+    inputs.d1.value = ''; inputs.n1.value = ''; inputs.n2.value = '';
 
     suppress = false;
-
-    // Recompute RD params immediately whenever α,β,D0 are complete
     convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
@@ -377,34 +368,24 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceBox.classList.add('hidden');
     }
 
-    // Restore the user's mode
     currentMode = prevMode;
     updateModeUI();
-
     updateDpf();
     validateAll(false, false);
   });
 
   // --- Input Listeners ---
-  // detachPreset=true ONLY for tissue inputs (α,β,D0 and manual r,s,k).
-  // Schedule edits (D1,n1,n2) must NOT detach preset.
   function attachInputBehavior(el, onChange, detachPreset = false) {
     el.addEventListener('input', () => {
       hideResults();
-
-      if (detachPreset) {
-        breakPresetAndDetach();
-      }
-
+      if (detachPreset) breakPresetAndDetach();
       if (bedText) bedText.textContent = "";
-
       onChange();
       updateDpf();
-      validateAll(false, false); // schedule not validated while typing
+      validateAll(false, false);
     });
   }
 
-  // Tissue params: detach preset (custom)
   attachInputBehavior(inputs.alpha, () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
   attachInputBehavior(inputs.beta,  () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
   attachInputBehavior(inputs.d0,    () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
@@ -413,12 +394,11 @@ document.addEventListener('DOMContentLoaded', () => {
   attachInputBehavior(inputs.s, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
   attachInputBehavior(inputs.k, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
 
-  // Schedule: do NOT detach preset
   attachInputBehavior(inputs.d1, () => {}, false);
   attachInputBehavior(inputs.n1, () => {}, false);
   attachInputBehavior(inputs.n2, () => {}, false);
 
-  // --- Lambert W0 (Hardened) ---
+  // --- Lambert W0 ---
   function lambertW0(z) {
     const minZ = -1 / Math.E;
     if (!Number.isFinite(z)) return NaN;
@@ -426,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Math.abs(z - minZ) < 1e-12) return -1;
     if (Math.abs(z) < W_EPS) return 0;
 
-    // Initial guess
     let w;
     if (z < 0) {
       w = Math.log1p(z);
@@ -438,18 +417,14 @@ document.addEventListener('DOMContentLoaded', () => {
       w = z;
     }
 
-    // Halley iterations with safeguards
     for (let i = 0; i < 80; i++) {
       const ew = Math.exp(w);
       const f = w * ew - z;
       const wp1 = w + 1;
-
-      // Avoid singularity at w ~ -1
       if (Math.abs(wp1) < 1e-14) {
         w = -1 + (wp1 >= 0 ? 1e-12 : -1e-12);
         continue;
       }
-
       const denom = ew * wp1 - (wp1 + 1) * f / (2 * wp1);
       if (!Number.isFinite(denom) || Math.abs(denom) < 1e-18) {
         const newtonDen = ew * wp1;
@@ -465,6 +440,48 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     return w;
+  }
+
+  // --- Display Result Helper ---
+  function updateResultUI(BED_val, D2_val, n2_val, r_val, s_val, K_val, W_val) {
+    const d2_val = D2_val / n2_val;
+
+    // 1. BED
+    bedText.textContent = `${BED_val.toFixed(2)} Gy`;
+    
+    // 2. New Total Dose
+    resultText.textContent = `${D2_val.toFixed(2)} Gy`;
+    
+    // 3. New Dose Per Fraction
+    dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
+
+    // 4. EQD2 Calculation
+    // Denominator for 2 Gy fraction:
+    // Denom = 2/(1-r) - (r/(s*(1-r))) * (1 - e^(-2s))
+    // Limit s->0: Denom = 2.
+    let denom2Gy;
+    if (Math.abs(s_val) <= S_EPS) {
+        denom2Gy = 2; // (2 Gy)/(1-r) with r->0? No, limit of expression is just dose d=2.
+    } else {
+        const one_r = 1 - r_val;
+        // Use expm1 for precision
+        const termExp2 = -Math.expm1(-2 * s_val); 
+        denom2Gy = (2 / one_r) - ((r_val) / (s_val * one_r)) * termExp2;
+    }
+
+    const n_2Gy = BED_val / denom2Gy;
+    const eqd2_total = n_2Gy * 2;
+
+    eqd2FractionsText.textContent = n_2Gy.toFixed(2);
+    eqd2TotalText.textContent = `${eqd2_total.toFixed(2)} Gy`;
+
+    // Debug Details
+    document.getElementById('dbg-bed1').textContent = BED_val.toFixed(6);
+    document.getElementById('dbg-k').textContent = K_val !== null ? K_val.toFixed(6) : "—";
+    document.getElementById('dbg-w').textContent = W_val !== null ? W_val.toFixed(6) : "—";
+
+    resultContainer.classList.remove('hidden');
+    resultContainer.scrollIntoView({ behavior: 'smooth' });
   }
 
   // --- MAIN CALCULATION ---
@@ -483,29 +500,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Classical Mode Handling ---
     if (currentMode === 'classical') {
       const beta = toNum(inputs.beta.value);
-
       // Branch A: β -> 0 explicitly
       if (Number.isFinite(beta) && Math.abs(beta) <= B_EPS) {
+        // Linear model: BED = D1
         const D2 = D1;
-        const d2 = D2 / n2;
-
-        document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
-        document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
-        if (bedText) bedText.textContent = `BED(D1,n1,r,s): ${D1.toFixed(2)} Gy`;
-
-        document.getElementById('dbg-bed1').textContent = "β=0 branch: BED = D";
-        document.getElementById('dbg-k').textContent = "—";
-        document.getElementById('dbg-w').textContent = "—";
-
-        resultContainer.classList.remove('hidden');
-        resultContainer.scrollIntoView({ behavior: 'smooth' });
+        // Mock RD params for display function (r, s=0)
+        // Note: r is computed inside convertClassicalToRD but might not be in inputs if suppress was on.
+        // Re-calculate local r for EQD2
+        const alpha = toNum(inputs.alpha.value);
+        const D0 = toNum(inputs.d0.value);
+        const r_calc = 1 - (alpha * D0);
+        
+        updateResultUI(D1, D2, n2, r_calc, 0, null, null);
         return;
       }
-
-      // Ensure valid conversion before proceeding (conversion guarded by completeness)
       convertClassicalToRD();
-
-      // If conversion/validation raised a non-schedule error, stop
       if (btnCalc.disabled) return;
     }
 
@@ -518,7 +527,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!needFinite("s", s, [inputs.s])) return;
     if (currentMode === 'rd' && !needFinite("k", k, [inputs.k])) return;
 
-    // Check Bounds
     if (!(r < 1) || (1 - r) <= ONE_R_EPS) {
       addError("Parameter error: r must be strictly < 1.", [inputs.r]);
       return;
@@ -530,29 +538,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Branch B: s -> 0 implies D2 = D1 ---
     if (Math.abs(s) <= S_EPS) {
-      const D2 = D1;
-      const d2 = D2 / n2;
-
-      document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
-      document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
-      if (bedText) bedText.textContent = `BED(D1,n1,r,s): ${D1.toFixed(2)} Gy`;
-
-      document.getElementById('dbg-bed1').textContent = "limit (s=0): BED = D";
-      document.getElementById('dbg-k').textContent = "—";
-      document.getElementById('dbg-w').textContent = "—";
-
-      resultContainer.classList.remove('hidden');
-      resultContainer.scrollIntoView({ behavior: 'smooth' });
-      return;
+       updateResultUI(D1, D1, n2, r, 0, null, null);
+       return;
     }
 
     // --- General Case: Lambert-W Solve ---
     const one_r = 1 - r;
     const d1 = D1 / n1;
-
-    // Use expm1 for precision when s*d1 is small
     const x = -s * d1;
-    const oneMinusExp = -Math.expm1(x); // 1 - exp(-s*d1)
+    const oneMinusExp = -Math.expm1(x); 
 
     const BED1 = (D1 / one_r) - ((n1 * r) / (s * one_r)) * oneMinusExp;
 
@@ -571,18 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const d2 = D2 / n2;
-
-    document.getElementById('result-text').textContent = D2.toFixed(2) + " Gy";
-    document.getElementById('dose-per-fraction-text').textContent = d2.toFixed(2) + " Gy / fx";
-    if (bedText) bedText.textContent = `BED(D1,n1,r,s): ${BED1.toFixed(2)} Gy`;
-
-    document.getElementById('dbg-bed1').textContent = BED1.toFixed(6);
-    document.getElementById('dbg-k').textContent = K.toFixed(6);
-    document.getElementById('dbg-w').textContent = w_val.toFixed(6);
-
-    resultContainer.classList.remove('hidden');
-    resultContainer.scrollIntoView({ behavior: 'smooth' });
+    updateResultUI(BED1, D2, n2, r, s, K, w_val);
   });
 
   // --- Initialization ---
