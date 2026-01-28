@@ -26,7 +26,7 @@ window.RD_DATA = {
     verified: true
   },
 
-  "NSCLC (H460) - Park Fit": {
+  "NSCLC (average by Park)": {
     alpha: 0.33,
     beta: 0.038,
     D0: 1.25,
