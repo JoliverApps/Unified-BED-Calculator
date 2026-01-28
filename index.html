@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
-  <script id="data-source-script" src="./datasrc.js"></script>
+  <script id="data-source-script" src="https://joliverapps.github.io/Unified-BED-Calculator/datasrc.js"></script>
 
   <script>
     window.MathJax = {
@@ -37,7 +37,8 @@
       </div>
     </div>
 
-    <div class="space-y-4">
+    <!-- 1) Tissue Parameters -->
+    <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
       <div class="flex items-center justify-between border-b pb-2">
         <h2 class="text-lg font-semibold text-slate-700">1. Tissue Parameters</h2>
         <div class="flex bg-slate-200 rounded-lg p-1 text-xs font-medium">
@@ -115,8 +116,10 @@
       <div id="error-container" class="space-y-1 pt-2 border-t border-red-100 hidden"></div>
     </div>
 
+    <!-- 2) Reference Schedule (Dose/Fx + BED line above EQD2) -->
     <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
       <h2 class="text-lg font-semibold text-slate-700">2. Reference Schedule</h2>
+
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="text-sm font-medium text-slate-600">Total Dose \(D_1\)</label>
@@ -127,12 +130,39 @@
           <input type="number" id="fractions-n1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
         </div>
       </div>
-      <div class="text-xs text-right text-slate-500">
-        Dose/Fx: <span id="original-dpf" class="font-bold">--</span> Gy
+
+      <!-- Dose/Fx and BED at same level -->
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <div>
+          Dose/Fx: <span id="original-dpf" class="font-bold">--</span> Gy
+        </div>
+        <div>
+          BED: <span id="bed-ref-text" class="font-bold">--</span>
+        </div>
+      </div>
+
+      <!-- Live EQD2 (reference) -->
+      <div class="pt-3 border-t border-slate-200">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-xs uppercase tracking-wide text-slate-400 font-bold">EQD2 (2 Gy/fx)</span>
+          <span class="text-xs text-slate-400">updates automatically</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white border border-slate-200 rounded-lg p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Fractions (2 Gy/fx)</div>
+            <div id="ref-eqd2-fractions-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Total Dose (EQD2)</div>
+            <div id="ref-eqd2-total-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="space-y-2">
+    <!-- 3) Target Schedule -->
+    <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
       <h2 class="text-lg font-semibold text-slate-700">3. Target Schedule</h2>
       <div class="flex items-center justify-between gap-4">
         <label class="text-sm font-medium text-slate-600">New Fractions \(n_2\):</label>
@@ -147,7 +177,7 @@
     <div id="result-container" class="hidden animate-fade-in mt-6">
       <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
         <div class="space-y-3">
-          
+
           <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
             <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">BED</span>
             <span id="bed-text" class="text-lg font-bold text-indigo-700"></span>
@@ -158,19 +188,9 @@
             <span id="result-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
 
-          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+          <div class="flex justify-between items-center">
             <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Dose Per Fraction</span>
             <span id="dose-per-fraction-text" class="text-lg font-bold text-indigo-700"></span>
-          </div>
-
-          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
-            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">Fractions (2 Gy/fx)</span>
-            <span id="eqd2-fractions-text" class="text-lg font-bold text-indigo-700"></span>
-          </div>
-
-          <div class="flex justify-between items-center">
-            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">Total Dose (EQD2)</span>
-            <span id="eqd2-total-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
 
         </div>
