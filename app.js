@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const cellDesc = document.getElementById('cell-desc');
   const sourceBox = document.getElementById('source-box');
   const sourceText = document.getElementById('source-text');
-  const sourceDoi = document.getElementById('source-doi');
   const sourceUrl = document.getElementById('source-url');
 
   const errorContainer = document.getElementById('error-container');
@@ -358,9 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
     convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
-    if (data.source || data.doi) {
+    if (data.source || data.url) {
       sourceText.textContent = data.source || "";
-      sourceDoi.textContent = data.doi || "";
       sourceUrl.textContent = data.url || "";
       sourceUrl.href = data.url || "#";
       sourceBox.classList.remove('hidden');
