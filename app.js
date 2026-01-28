@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cellDesc = document.getElementById('cell-desc');
   const sourceBox = document.getElementById('source-box');
   const sourceText = document.getElementById('source-text');
-  const sourceUrl = document.getElementById('source-url');
+  const sourceUrl = document.getElementById('source-url'); // Removed sourceDoi
 
   const errorContainer = document.getElementById('error-container');
   const btnModeClassical = document.getElementById('mode-classical');
@@ -357,6 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
     convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
+    
+    // CHANGED: Logic to show source if source OR url exists
     if (data.source || data.url) {
       sourceText.textContent = data.source || "";
       sourceUrl.textContent = data.url || "";
@@ -454,12 +456,9 @@ document.addEventListener('DOMContentLoaded', () => {
     dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
 
     // 4. EQD2 Calculation
-    // Denominator for 2 Gy fraction:
-    // Denom = 2/(1-r) - (r/(s*(1-r))) * (1 - e^(-2s))
-    // Limit s->0: Denom = 2.
     let denom2Gy;
     if (Math.abs(s_val) <= S_EPS) {
-        denom2Gy = 2; // (2 Gy)/(1-r) with r->0? No, limit of expression is just dose d=2.
+        denom2Gy = 2; // Linear limit (s->0), BED = d, so BED(2Gy) = 2
     } else {
         const one_r = 1 - r_val;
         // Use expm1 for precision
@@ -503,8 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Linear model: BED = D1
         const D2 = D1;
         // Mock RD params for display function (r, s=0)
-        // Note: r is computed inside convertClassicalToRD but might not be in inputs if suppress was on.
-        // Re-calculate local r for EQD2
         const alpha = toNum(inputs.alpha.value);
         const D0 = toNum(inputs.d0.value);
         const r_calc = 1 - (alpha * D0);
