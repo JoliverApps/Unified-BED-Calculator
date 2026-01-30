@@ -26,7 +26,7 @@ window.RD_DATA = {
     verified: true
   },
 
-  "NSCLC (average by Park)": {
+  "NSCLC (average by Park et al)": {
     alpha: 0.33,
     beta: 0.038,
     D0: 1.25,
