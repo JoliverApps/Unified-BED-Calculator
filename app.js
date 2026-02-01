@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const dpfText = document.getElementById('dose-per-fraction-text');
 
   // Reference-derived (LIVE)
-  const bedRefText = document.getElementById('bed-ref-text'); // moved to Dose/Fx line
+  const bedRefText = document.getElementById('bed-ref-text'); 
   const refEqd2FractionsText = document.getElementById('ref-eqd2-fractions-text');
   const refEqd2TotalText = document.getElementById('ref-eqd2-total-text');
 
@@ -156,7 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!(Number.isFinite(alpha) && alpha > 0)) addError("α must be strictly positive.", [inputs.alpha]);
     }
     if (shouldValidate(inputs.beta)) {
-      if (!(Number.isFinite(beta) && beta >= 0)) addError("β must be non-negative (0 is allowed).", [inputs.beta]);
+      // UPDATED: Allow negative beta
+      if (!Number.isFinite(beta)) addError("β must be a valid number.", [inputs.beta]);
     }
     if (shouldValidate(inputs.d0)) {
       if (!(Number.isFinite(D0) && D0 > 0)) addError("D0 must be strictly positive.", [inputs.d0]);
@@ -171,7 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (Number.isFinite(r) && (1 - r) <= ONE_R_EPS) addError("r is too close to 1 (BED singularity).", [inputs.r]);
     }
     if (shouldValidate(inputs.s)) {
-      if (!(Number.isFinite(s) && s >= 0)) addError("s must be non-negative (0 is allowed).", [inputs.s]);
+      // UPDATED: Allow negative s
+      if (!Number.isFinite(s)) addError("s must be a valid number.", [inputs.s]);
     }
 
     // --- Schedule Validation (ONLY ON CALCULATE) ---
@@ -228,17 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Normal Calculation
     const s = (2 * beta) / (r * k);
 
-    // Physicality check
-    if (!(Number.isFinite(s) && s >= 0)) {
-      suppress = true;
-      inputs.k.value = k.toFixed(6);
-      inputs.r.value = r.toFixed(6);
-      inputs.s.value = "";
-      suppress = false;
-      validateAll(false, false);
-      addError("Resulting s < 0. Incompatible classical inputs.", [inputs.beta]);
-      return;
-    }
+    // UPDATED: Removed "Resulting s < 0" check block here to allow negative beta.
 
     suppress = true;
     inputs.k.value = k.toFixed(6);
@@ -256,7 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = toNum(inputs.s.value);
     const k = toNum(inputs.k.value);
 
-    if (!(Number.isFinite(r) && Number.isFinite(s) && Number.isFinite(k) && k > 0 && s >= 0)) return;
+    // UPDATED: Removed s >= 0 requirement
+    if (!(Number.isFinite(r) && Number.isFinite(s) && Number.isFinite(k) && k > 0)) return;
     if (!(r < 1)) return;
 
     const D0 = 1 / k;
@@ -383,7 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function denomBEDperFrac2Gy(r, s) {
     const one_r = 1 - r;
     if (!(one_r > ONE_R_EPS)) return NaN;
-    if (!(Number.isFinite(s) && s >= 0)) return NaN;
+    // UPDATED: Allow negative s
+    if (!Number.isFinite(s)) return NaN;
 
     if (Math.abs(s) <= S_EPS) return 2;
 
@@ -394,8 +388,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function bedUnified(D, n, r, s) {
     const one_r = 1 - r;
     if (!(Number.isFinite(D) && Number.isFinite(n) && D > 0 && n > 0)) return NaN;
-    if (!(Number.isFinite(r) && r < 1 && one_r > ONE_R_EPS)) return NaN;
-    if (!(Number.isFinite(s) && s >= 0)) return NaN;
+    // UPDATED: Allow negative s
+    if (!(Number.isFinite(r) && r < 1 && one_r > ONE_R_EPS && Number.isFinite(s))) return NaN;
 
     if (Math.abs(s) <= S_EPS) return D;
 
@@ -424,7 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const r = toNum(inputs.r.value);
     const s = toNum(inputs.s.value);
 
-    if (!(Number.isFinite(r) && r < 1 && (1 - r) > ONE_R_EPS && Number.isFinite(s) && s >= 0)) {
+    // UPDATED: Allow negative s
+    if (!(Number.isFinite(r) && r < 1 && (1 - r) > ONE_R_EPS && Number.isFinite(s))) {
       clearReferenceDerived();
       return;
     }
@@ -571,10 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
       addError("Parameter error: r must be strictly < 1.", [inputs.r]);
       return;
     }
-    if (!(s >= 0)) {
-      addError("Parameter error: s must be non-negative.", [inputs.s]);
-      return;
-    }
+    // UPDATED: Removed s >= 0 requirement check here
 
     // s -> 0 => D2 = D1
     if (Math.abs(s) <= S_EPS) {
