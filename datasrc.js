@@ -37,6 +37,27 @@ window.RD_DATA = {
     verified: true
   },
 
+    "CHO-K1 (Original paper)": {
+    alpha: 0.050904,
+    beta: 0.103401,
+    D0: 1.100110,
+    Dq: 3,917012,
+    desc: "From Oliveira, JM original paper",
+    source: "",
+    url: "",
+    verified: true
+  },
+
+    "XRS6 (Original paper)": {
+    alpha: 1.654596,
+    beta: -0.665829,
+    D0: 1.461988,
+    Dq: -1,034257,
+    desc: "From Oliveira, JM original paper",
+    source: "",
+    url: "",
+    verified: true
+  },
   /* UNVERIFIED----------------------------------------------------*/
 
   "Glioblastoma (U87MG - Stem-Like)": {
