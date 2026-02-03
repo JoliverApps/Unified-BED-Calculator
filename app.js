@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const sourceUrl = document.getElementById('source-url');
 
   const errorContainer = document.getElementById('error-container');
+  const btnModeClassical = document.getElementById('mode-classical');
+  const btnModeRD = document.getElementById('mode-rd');
   const btnCalc = document.getElementById('calculate-btn');
 
   const resultContainer = document.getElementById('result-container');
@@ -16,28 +18,46 @@ document.addEventListener('DOMContentLoaded', () => {
   const bedText = document.getElementById('bed-text');
   const resultText = document.getElementById('result-text');
   const dpfText = document.getElementById('dose-per-fraction-text');
+
+  // Reference-derived (LIVE)
   const bedRefText = document.getElementById('bed-ref-text'); 
+  const refEqd2FractionsText = document.getElementById('ref-eqd2-fractions-text');
+  const refEqd2TotalText = document.getElementById('ref-eqd2-total-text');
 
   const inputs = {
-    // New Primary Parameters
+    // Classical Inputs
     ab: document.getElementById('param-ab'), // alpha/beta
     dq: document.getElementById('param-dq'), // Dq
-    
+
+    // RD Inputs (k removed)
+    r: document.getElementById('param-r'),
+    s: document.getElementById('param-s'),
+
     // Schedule
     d1: document.getElementById('dose-d1'),
     n1: document.getElementById('fractions-n1'),
     n2: document.getElementById('fractions-n2'),
   };
 
+  // --- State ---
+  let currentMode = 'classical'; // 'classical' | 'rd'
   let suppress = false;
 
   // --- Numeric Tolerances ---
-  const R_EPS = 1e-12;      // r -> 0 singularity
-  const ONE_R_EPS = 1e-9;   // 1-r -> 0 (BED blowup)
-  const W_EPS = 1e-14;      // Lambert W convergence
-  const ZERO_TOL = 1e-12;
+  const ONE_R_EPS = 1e-9;  // 1-r -> 0
+  const W_EPS = 1e-14;     // Lambert W convergence
 
   // --- UI Helpers ---
+  const setActive = (btn) => {
+    btn.classList.remove('bg-transparent', 'text-slate-500', 'hover:text-slate-700');
+    btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+  };
+
+  const setInactive = (btn) => {
+    btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+    btn.classList.add('bg-transparent', 'text-slate-500', 'hover:text-slate-700');
+  };
+
   function hideResults() {
     resultContainer.classList.add('hidden');
   }
@@ -70,6 +90,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number.isFinite(x) && Number.isInteger(x) && x > 0;
   }
 
+  function needFinite(name, x, els = []) {
+    if (!Number.isFinite(x)) {
+      addError(`Internal error: ${name} is missing or invalid.`, els);
+      return false;
+    }
+    return true;
+  }
+
+  // --- Helper: Update Dose Per Fraction Display ---
   function updateDpf() {
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
@@ -80,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- UX: Break Preset ---
   function breakPresetAndDetach() {
     if (suppress) return;
     if (cellSelect.value === "") return;
@@ -90,83 +120,158 @@ document.addEventListener('DOMContentLoaded', () => {
     suppress = false;
   }
 
-  // --- CORE: Parameter Mapping ---
-  // Calculates (r, s) from (alpha/beta, Dq) using the quadratic root
-  function getModelParams() {
-    const AB = toNum(inputs.ab.value);
-    const DQ = toNum(inputs.dq.value);
-
-    // 1. Basic numeric validity checks (allow negatives)
-    if (!Number.isFinite(AB) || !Number.isFinite(DQ)) return null;
-
-    // 2. Singularity checks
-    // If AB is zero, we divide by zero in the formula.
-    if (Math.abs(AB) < ZERO_TOL) {
-      addError("α/β cannot be zero (Division by zero in r derivation).", [inputs.ab]);
-      return null;
-    }
-    // If DQ is zero, s is undefined.
-    if (Math.abs(DQ) < ZERO_TOL) {
-      addError("Dq cannot be zero (s is undefined).", [inputs.dq]);
-      return null;
-    }
-
-    // 3. Quadratic Solution for r
-    // r = ( sqrt( Dq^2 + 2*Dq*AB ) - Dq ) / AB
-    const termInside = (DQ * DQ) + (2 * DQ * AB);
-
-    if (termInside < 0) {
-      addError("Complex root detected: Dq² + 2·Dq·(α/β) < 0. No real solution.", [inputs.ab, inputs.dq]);
-      return null;
-    }
-
-    const r = (Math.sqrt(termInside) - DQ) / AB;
-    
-    // 4. Calculate s
-    // s = r / Dq
-    const s = r / DQ;
-
-    // 5. Check Physical constraints for BED formula
-    // We need 1-r != 0 for the BED denominator
-    if (Math.abs(1 - r) <= ONE_R_EPS) {
-      addError(`Singularity detected: derived r ≈ 1 (implies α/β ≈ 0).`, [inputs.ab]);
-      return null;
-    }
-
-    return { r, s };
-  }
-
-  // --- Validation ---
-  function validateInputs(strict = false) {
+  // --- Validation Logic ---
+  function validateAll(strict = false, validateSchedule = false) {
     clearErrorsAndInvalid();
-    
+
+    const scheduleSet = new Set([inputs.d1, inputs.n1, inputs.n2]);
+
+    const shouldValidate = (el) => {
+      if (scheduleSet.has(el)) return validateSchedule;
+      if (el.disabled) return false;
+      if (strict) return true;
+      return el.value !== "";
+    };
+
+    // Classical Inputs
+    const ab = toNum(inputs.ab.value);
+    const dq = toNum(inputs.dq.value);
+
+    // RD Inputs
+    const r = toNum(inputs.r.value);
+    const s = toNum(inputs.s.value);
+
+    if (shouldValidate(inputs.ab)) {
+      if (!Number.isFinite(ab)) addError("α/β must be a valid number.", [inputs.ab]);
+      if (Math.abs(ab) < 1e-12) addError("α/β cannot be zero.", [inputs.ab]);
+    }
+    if (shouldValidate(inputs.dq)) {
+      if (!Number.isFinite(dq)) addError("Dq must be a valid number.", [inputs.dq]);
+      if (Math.abs(dq) < 1e-12) addError("Dq cannot be zero.", [inputs.dq]);
+    }
+
+    if (shouldValidate(inputs.r)) {
+      if (!Number.isFinite(r)) addError("r is invalid.", [inputs.r]);
+      if (Number.isFinite(r) && (1 - r) <= ONE_R_EPS) addError("r ≈ 1 (singularity).", [inputs.r]);
+    }
+    if (shouldValidate(inputs.s)) {
+      if (!Number.isFinite(s)) addError("s is invalid.", [inputs.s]);
+    }
+
+    // Schedule
+    if (shouldValidate(inputs.d1)) {
+      const D1 = toNum(inputs.d1.value);
+      if (!(Number.isFinite(D1) && D1 > 0)) addError("Total Dose D1 > 0.", [inputs.d1]);
+    }
+    if (shouldValidate(inputs.n1)) {
+      const n1 = toNum(inputs.n1.value);
+      if (!isPosInt(n1)) addError("n1 must be positive integer.", [inputs.n1]);
+    }
+    if (shouldValidate(inputs.n2)) {
+      const n2 = toNum(inputs.n2.value);
+      if (!isPosInt(n2)) addError("n2 must be positive integer.", [inputs.n2]);
+    }
+
+    return !btnCalc.disabled;
+  }
+
+  // --- Conversion Classical (AB, Dq) -> RD (r, s) ---
+  function convertClassicalToRD() {
+    if (suppress) return;
+
     const AB = toNum(inputs.ab.value);
     const DQ = toNum(inputs.dq.value);
 
-    // Simple existence check
-    if (strict) {
-       if (!Number.isFinite(AB)) addError("α/β is required.", [inputs.ab]);
-       if (!Number.isFinite(DQ)) addError("Dq is required.", [inputs.dq]);
-    }
-    
-    // Check if params can be derived
-    const params = getModelParams();
-    return params !== null;
-  }
+    if (!Number.isFinite(AB) || !Number.isFinite(DQ)) return;
+    if (Math.abs(AB) < 1e-12 || Math.abs(DQ) < 1e-12) return;
 
-  // --- Preset Loading ---
-  function initData() {
-    if (!window.RD_DATA) return;
-    const isVerified = (v) => v === true || v === 1 || v === "true";
-    const keysVerified = Object.keys(window.RD_DATA).filter(k => isVerified(window.RD_DATA[k]?.verified)).sort();
-    
-    cellSelect.innerHTML = '<option value="">— Select Verified Cell Line —</option>';
-    if (keysVerified.length === 0) {
-      cellSelect.innerHTML = '<option value="">No verified datasets available</option>';
+    // r = ( sqrt(Dq^2 + 2*Dq*AB) - Dq ) / AB
+    const termInside = (DQ * DQ) + (2 * DQ * AB);
+    if (termInside < 0) {
+      addError("Complex root detected (Dq, α/β mismatch).", [inputs.ab, inputs.dq]);
       return;
     }
 
-    keysVerified.forEach(key => {
+    const r = (Math.sqrt(termInside) - DQ) / AB;
+    const s = r / DQ;
+
+    suppress = true;
+    inputs.r.value = r.toFixed(6);
+    inputs.s.value = s.toFixed(6);
+    suppress = false;
+    
+    validateAll(false, false);
+  }
+
+  // --- Conversion RD (r, s) -> Classical (AB, Dq) ---
+  function convertRDToClassical() {
+    if (suppress) return;
+
+    const r = toNum(inputs.r.value);
+    const s = toNum(inputs.s.value);
+
+    if (!Number.isFinite(r) || !Number.isFinite(s)) return;
+    if (Math.abs(s) < 1e-12) return;
+
+    const DQ = r / s;
+    const AB = (2 * (1 - r)) / (r * s);
+
+    suppress = true;
+    inputs.dq.value = DQ.toFixed(6);
+    inputs.ab.value = AB.toFixed(6);
+    suppress = false;
+    
+    validateAll(false, false);
+  }
+
+  // --- UI Mode Switching ---
+  function updateModeUI() {
+    const classicalInputs = [inputs.ab, inputs.dq];
+    const rdInputs = [inputs.r, inputs.s];
+
+    if (currentMode === 'classical') {
+      setActive(btnModeClassical);
+      setInactive(btnModeRD);
+      classicalInputs.forEach(el => el.disabled = false);
+      rdInputs.forEach(el => el.disabled = true);
+      convertClassicalToRD();
+    } else {
+      setActive(btnModeRD);
+      setInactive(btnModeClassical);
+      rdInputs.forEach(el => el.disabled = false);
+      classicalInputs.forEach(el => el.disabled = true);
+      convertRDToClassical();
+    }
+  }
+
+  function setMode(mode) {
+    currentMode = mode;
+    hideResults();
+    validateAll(false, false);
+    updateModeUI();
+    updateReferenceDerived();
+  }
+
+  btnModeClassical.addEventListener('click', () => setMode('classical'));
+  btnModeRD.addEventListener('click', () => setMode('rd'));
+
+  // --- Preset Loading ---
+  function initData() {
+    if (!window.RD_DATA) {
+      cellSelect.innerHTML = '<option value="">Error: datasrc.js not found</option>';
+      return;
+    }
+    const isVerified = (v) => v === true || v === 1 || v === "true";
+    const keys = Object.keys(window.RD_DATA).filter(k => isVerified(window.RD_DATA[k]?.verified)).sort();
+    
+    cellSelect.innerHTML = '<option value="">— Select Verified Cell Line —</option>';
+    if (keys.length === 0) {
+      cellSelect.innerHTML = '<option value="">No verified datasets</option>';
+      cellSelect.disabled = true;
+      return;
+    }
+    cellSelect.disabled = false;
+    keys.forEach(key => {
       const opt = document.createElement('option');
       opt.value = key;
       opt.textContent = key;
@@ -174,12 +279,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Preset Listener ---
+  // --- Preset Select ---
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
     if (bedText) bedText.textContent = "";
 
+    const prevMode = currentMode;
     const key = cellSelect.value;
     if (!key || !window.RD_DATA[key]) {
       cellDesc.textContent = "";
@@ -190,9 +296,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const data = window.RD_DATA[key];
     suppress = true;
+    
+    // Load AB and Dq
     inputs.ab.value = data.alpha_by_beta ?? '';
     inputs.dq.value = data.D_q ?? '';
+
+    // Clear RD/Schedule
+    inputs.r.value = ''; inputs.s.value = '';
+    inputs.d1.value = ''; inputs.n1.value = ''; inputs.n2.value = '';
+
     suppress = false;
+    convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
     if (data.source || data.url) {
@@ -204,62 +318,100 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceBox.classList.add('hidden');
     }
 
+    currentMode = prevMode;
+    updateModeUI();
     updateDpf();
     updateReferenceDerived();
   });
 
-  // --- BED Calculations ---
+  // --- BED / EQD2 Logic ---
   function bedUnified(D, n, r, s) {
     const one_r = 1 - r;
-    // Safety
     if (!Number.isFinite(D) || !Number.isFinite(n) || D <= 0 || n <= 0) return NaN;
-
+    if (Math.abs(s) < 1e-12) return D;
+    
     const x = -s * (D / n);
-    const oneMinusExp = -Math.expm1(x); // 1 - e^{-s d}
+    const oneMinusExp = -Math.expm1(x); 
     return (D / one_r) - ((n * r) / (s * one_r)) * oneMinusExp;
+  }
+
+  function denomBEDperFrac2Gy(r, s) {
+    const one_r = 1 - r;
+    if (Math.abs(s) < 1e-12) return 2;
+    const termExp2 = -Math.expm1(-2 * s);
+    return (2 / one_r) - (r / (s * one_r)) * termExp2;
+  }
+
+  function clearReferenceDerived() {
+    bedRefText.textContent = "--";
+    refEqd2FractionsText.textContent = "--";
+    refEqd2TotalText.textContent = "--";
   }
 
   function updateReferenceDerived() {
     updateDpf();
+
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
-    
+
+    // Basic validity
     if (!(Number.isFinite(D1) && D1 > 0 && isPosInt(n1))) {
-      bedRefText.textContent = "--";
+      clearReferenceDerived();
       return;
     }
 
-    const params = getModelParams(); // safe getter (handles null internally)
-    if (!params) {
-      bedRefText.textContent = "--";
+    // Get RD params
+    const r = toNum(inputs.r.value);
+    const s = toNum(inputs.s.value);
+    
+    if (!(Number.isFinite(r) && Number.isFinite(s))) {
+      clearReferenceDerived();
       return;
     }
 
-    const BED1 = bedUnified(D1, n1, params.r, params.s);
+    // Calc BED
+    const BED1 = bedUnified(D1, n1, r, s);
     if (!Number.isFinite(BED1)) {
-       bedRefText.textContent = "Error";
-       return;
+      clearReferenceDerived();
+      return;
     }
+
+    // Calc EQD2
+    const bed2Gy = denomBEDperFrac2Gy(r, s);
+    let nEqd2 = 0;
+    let D_Eqd2 = 0;
+
+    if (Number.isFinite(bed2Gy) && bed2Gy > 0) {
+      nEqd2 = BED1 / bed2Gy;
+      D_Eqd2 = nEqd2 * 2;
+    }
+
     bedRefText.textContent = `${BED1.toFixed(2)} Gy`;
+    refEqd2FractionsText.textContent = nEqd2 > 0 ? nEqd2.toFixed(2) : "--";
+    refEqd2TotalText.textContent = D_Eqd2 > 0 ? `${D_Eqd2.toFixed(2)} Gy` : "--";
   }
 
   // --- Input Listeners ---
-  function attachInputBehavior(el, detachPreset = false) {
+  function attachInputBehavior(el, onChange, detachPreset = false) {
     el.addEventListener('input', () => {
       hideResults();
       if (detachPreset) breakPresetAndDetach();
       if (bedText) bedText.textContent = "";
+      onChange();
       updateReferenceDerived();
-      // On input, we just clear errors, we don't strictly validate until calc
-      if (errorContainer.innerHTML !== "") validateInputs(false); 
+      if (errorContainer.innerHTML !== "") validateAll(false, false);
     });
   }
 
-  attachInputBehavior(inputs.ab, true);
-  attachInputBehavior(inputs.dq, true);
-  attachInputBehavior(inputs.d1, false);
-  attachInputBehavior(inputs.n1, false);
-  attachInputBehavior(inputs.n2, false);
+  attachInputBehavior(inputs.ab, () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
+  attachInputBehavior(inputs.dq, () => { if (currentMode === 'classical') convertClassicalToRD(); }, true);
+
+  attachInputBehavior(inputs.r, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
+  attachInputBehavior(inputs.s, () => { if (currentMode === 'rd') convertRDToClassical(); }, true);
+
+  attachInputBehavior(inputs.d1, () => {}, false);
+  attachInputBehavior(inputs.n1, () => {}, false);
+  attachInputBehavior(inputs.n2, () => {}, false);
 
   // --- Lambert W0 ---
   function lambertW0(z) {
@@ -268,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (z < minZ - 1e-12) return NaN;
     if (Math.abs(z - minZ) < 1e-12) return -1;
     if (Math.abs(z) < W_EPS) return 0;
-
     let w;
     if (z < 0) {
       w = Math.log1p(z);
@@ -279,14 +430,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       w = z;
     }
-
     for (let i = 0; i < 50; i++) {
       const ew = Math.exp(w);
       const f = w * ew - z;
       const wp1 = w + 1;
       const denom = ew * wp1 - (wp1 + 1) * f / (2 * wp1);
-      
-      if (Math.abs(denom) < 1e-18) break; 
+      if (Math.abs(denom) < 1e-18) break;
       let dw = f / denom;
       dw = Math.max(Math.min(dw, 1), -1);
       w -= dw;
@@ -295,77 +444,72 @@ document.addEventListener('DOMContentLoaded', () => {
     return w;
   }
 
-  // --- Main Calculation ---
+  // --- Display Result Helper ---
+  function updateResultUI(BED_val, D2_val, n2_val, K_val, W_val) {
+    const d2_val = D2_val / n2_val;
+    bedText.textContent = `${BED_val.toFixed(2)} Gy`;
+    resultText.textContent = `${D2_val.toFixed(2)} Gy`;
+    dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
+    document.getElementById('dbg-bed1').textContent = BED_val.toFixed(6);
+    document.getElementById('dbg-k').textContent = K_val !== null ? K_val.toFixed(6) : "—";
+    document.getElementById('dbg-w').textContent = W_val !== null ? W_val.toFixed(6) : "—";
+    resultContainer.classList.remove('hidden');
+    resultContainer.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // --- MAIN CALCULATION ---
   btnCalc.addEventListener('click', () => {
     hideResults();
-    
-    // 1. Validate AB/DQ
-    const params = getModelParams();
-    if (!params) {
-       // getModelParams adds its own errors to UI
-       return;
-    }
+    clearErrorsAndInvalid();
+    if (bedText) bedText.textContent = "";
 
-    // 2. Validate Schedule
+    if (!validateAll(true, true)) return;
+
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
     const n2 = toNum(inputs.n2.value);
 
-    let schedErr = false;
-    if (!(Number.isFinite(D1) && D1 > 0)) { addError("Total Dose D1 must be > 0", [inputs.d1]); schedErr=true; }
-    if (!isPosInt(n1)) { addError("n1 must be an integer > 0", [inputs.n1]); schedErr=true; }
-    if (!isPosInt(n2)) { addError("n2 must be an integer > 0", [inputs.n2]); schedErr=true; }
-    if (schedErr) return;
+    // For calculation, we rely on r and s (which are updated by convert functions)
+    const r = toNum(inputs.r.value);
+    const s = toNum(inputs.s.value);
+    
+    // Safety check
+    if (!needFinite("r", r, [inputs.r])) return;
+    if (!needFinite("s", s, [inputs.s])) return;
+    if ((1 - r) <= ONE_R_EPS) {
+        addError("Calculation singularity (r ≈ 1).", [inputs.r]);
+        return;
+    }
 
-    // 3. Calc BED1
-    const { r, s } = params;
     const one_r = 1 - r;
     const d1 = D1 / n1;
     const x = -s * d1;
-    const BED1 = (D1 / one_r) - ((n1 * r) / (s * one_r)) * (-Math.expm1(x));
+    const oneMinusExp = -Math.expm1(x);
 
-    if (!Number.isFinite(BED1)) {
-        addError("Calculation Error: Resulting BED is infinite or invalid.", []);
-        return;
-    }
+    const BED1 = (D1 / one_r) - ((n1 * r) / (s * one_r)) * oneMinusExp;
 
-    // 4. Solve for D2 using Lambert W
-    // K = r + (s * (1-r)/n2) * BED
-    const K = r + ( (s * one_r) / n2 ) * BED1;
-    
-    // z = -r * exp(-K)
-    const z = -r * Math.exp(-K);
-    const w_val = lambertW0(z);
+    const K = r + (s * one_r / n2) * BED1;
+    const arg = -r * Math.exp(-K);
+    const w_val = lambertW0(arg);
 
     if (!Number.isFinite(w_val)) {
-        addError("Mathematical Domain Error: Lambert-W argument out of bounds (Check if inputs are physically consistent).", []);
-        return;
+      addError("Lambert-W failure: parameters out of domain.", []);
+      return;
     }
 
-    // D2 = (n2 / s) * (K + W(z))
     const D2 = (n2 / s) * (K + w_val);
-
     if (!(Number.isFinite(D2) && D2 > 0)) {
-        addError("Computed D2 is non-physical (<= 0).", []);
-        return;
+      addError("Computed D2 is non-physical.", []);
+      return;
     }
 
-    // Display
-    const d2_val = D2 / n2;
-    bedText.textContent = `${BED1.toFixed(2)} Gy`;
-    resultText.textContent = `${D2.toFixed(2)} Gy`;
-    dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
-
-    document.getElementById('dbg-r').textContent = r.toFixed(4);
-    document.getElementById('dbg-s').textContent = s.toFixed(4);
-    document.getElementById('dbg-k').textContent = K.toFixed(4);
-    document.getElementById('dbg-w').textContent = w_val.toFixed(4);
-
-    resultContainer.classList.remove('hidden');
-    resultContainer.scrollIntoView({ behavior: 'smooth' });
+    updateResultUI(BED1, D2, n2, K, w_val);
   });
 
-  // Init
+  // --- Initialization ---
   initData();
+  updateModeUI();
+  updateDpf();
   updateReferenceDerived();
+  validateAll(false, false);
 });
