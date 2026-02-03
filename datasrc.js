@@ -4,11 +4,9 @@
  * VERIFIED DATASETS for RD Framework Demonstration
  *
  * PARAMETER KEY:
- * - alpha_by_beta (Gy) : The standard LQ ratio.
- * - D_q           (Gy) : The shoulder displacement (quasi-threshold dose).
- * - alpha         (Gy^-1): Optional/Legacy
- * - beta          (Gy^-2): Optional/Legacy
- * - D0            (Gy)   : Optional/Legacy
+ * - alpha_by_beta (Gy) : The standard LQ ratio (High Precision).
+ * - D_q           (Gy) : The shoulder displacement.
+ * - alpha, beta, D0    : Legacy/Reference values.
  *
  * CITATION POLICY:
  * Full credit is provided in the 'source' field for application display.
@@ -17,7 +15,8 @@
 window.RD_DATA = {
 
   "Rhabdomyosarcoma (Pediatric)": {
-    alpha_by_beta: 9.02,
+    // alpha=0.0406, beta=0.0045 => Ratio ~ 9.022222
+    alpha_by_beta: 9.022222, 
     D_q: 9.2,
     alpha: 0.0406,
     beta: 0.0045,
@@ -29,7 +28,8 @@ window.RD_DATA = {
   },
 
   "NSCLC (average by Park et al)": {
-    alpha_by_beta: 8.68,
+    // alpha=0.33, beta=0.038 => Ratio ~ 8.684211
+    alpha_by_beta: 8.684211,
     D_q: 1.8,
     alpha: 0.33,
     beta: 0.038,
@@ -41,8 +41,9 @@ window.RD_DATA = {
   },
 
   "CHO-K1 (Original paper)": {
-    alpha_by_beta: 0.4923,
-    D_q: 3.9170,
+    // alpha=0.050904, beta=0.103401 => Ratio ~ 0.492297
+    alpha_by_beta: 0.492297,
+    D_q: 3.917012, 
     alpha: 0.050904,
     beta: 0.103401,
     D0: 1.100110,
@@ -53,8 +54,9 @@ window.RD_DATA = {
   },
 
   "XRS6 (Original paper)": {
-    alpha_by_beta: -2.485,
-    D_q: -1.0343,
+    // alpha=1.654596, beta=-0.665829 => Ratio ~ -2.485016
+    alpha_by_beta: -2.485016,
+    D_q: -1.034257,
     alpha: 1.654596,
     beta: -0.665829,
     D0: 1.461988,
@@ -67,6 +69,8 @@ window.RD_DATA = {
   /* UNVERIFIED----------------------------------------------------*/
 
   "Glioblastoma (U87MG - Stem-Like)": {
+    // alpha=0.098, beta=0.007 => Ratio = 14.0 (Using cited ratio directly if available, else calc)
+    // The source paper explicitly cites 14.1, keeping as is.
     alpha_by_beta: 14.1,
     D_q: 2.10,
     alpha: 0.098,
@@ -79,6 +83,7 @@ window.RD_DATA = {
   },
 
   "V79 (Chinese Hamster) - Standard": {
+    // alpha=0.180, beta=0.020 => Ratio = 9.0
     alpha_by_beta: 9.0,
     D_q: 3.7,
     alpha: 0.180,
