@@ -1,29 +1,142 @@
-body { font-family: 'Inter', sans-serif; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+:root{
+  --ring: rgba(99, 102, 241, 0.40); /* indigo-500-ish */
+  --shadow-soft: 0 10px 25px rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 12px 30px rgba(15, 23, 42, 0.10);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --border-soft: rgba(148, 163, 184, 0.55); /* slate-400-ish */
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle global “snappiness” for form controls */
+button, input, select, summary {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease, color 160ms ease;
+}
+
+/* Inputs: cleaner borders + nicer focus ring */
+input[type="number"], select {
+  border-color: var(--border-soft);
+}
+
+input[type="number"]:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+/* Focus-visible polish (keyboard users) */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+/* Slightly nicer “card” feel if you ever reuse it */
+.card-soft {
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(226, 232, 240, 0.85); /* slate-200-ish */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+}
+
+/* Error Text */
 .error-text {
-  color: #ef4444;
+  color: #ef4444; /* red-500 */
   font-size: 0.75rem;
+  line-height: 1.2;
   display: block;
   margin-top: 0.25rem;
-  font-weight: 500;
+  font-weight: 600;
+  animation: fadeIn 0.25s ease-in-out;
 }
 
+/* Input spinner removal */
 input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-input[type="number"] { -moz-appearance: textfield; }
-
-details > summary { cursor: pointer; }
-
-input.invalid { border-color: #ef4444; background-color: #fef2f2; }
-input.invalid:focus { --tw-ring-color: #ef4444; border-color: #ef4444; }
-
-input:disabled {
-  background-color: #f3f4f6;
-  color: #6b7280;
-  cursor: not-allowed;
-  border-color: #e5e7eb;
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
-.fade-in { animation: fadeIn 0.35s ease-in-out; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+/* Validation States */
+input.invalid, select.invalid {
+  border-color: rgba(239, 68, 68, 0.95) !important;
+  background-color: rgba(254, 242, 242, 0.90) !important; /* red-50 */
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.20);
+}
+input.invalid:focus, select.invalid:focus {
+  --tw-ring-color: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.30);
+}
+
+/* Disabled: less “dead”, more “intentional” */
+input:disabled, select:disabled {
+  background-color: rgba(241, 245, 249, 0.85); /* slate-100 */
+  color: rgba(100, 116, 139, 0.75); /* slate-500 */
+  cursor: not-allowed;
+  border-color: rgba(226, 232, 240, 0.95);
+}
+
+/* Buttons: slightly nicer active feel */
+button:active {
+  transform: translateY(1px);
+}
+
+/* Details/Summary: nicer disclosure feel */
+details {
+  box-shadow: var(--shadow-soft);
+  background: rgba(255,255,255,0.9);
+}
+
+details > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Smooth-ish reveal (CSS-only) */
+details[open] > summary {
+  box-shadow: var(--shadow-inset);
+}
+details[open] > div {
+  animation: fadeIn 0.22s ease-in-out;
+}
+
+/* Animation helpers */
+.fade-in {
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
