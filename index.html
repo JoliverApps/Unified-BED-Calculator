@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 
-  <script id="data-source-script" src="./datasrc.js"></script>
+  <script id="data-source-script" src="https://joliverapps.github.io/Unified-BED-Calculator/datasrc.js"></script>
 
   <script>
     window.MathJax = {
@@ -27,7 +27,7 @@
     <div class="bg-indigo-50 border-l-4 border-indigo-500 text-indigo-800 p-4 rounded-lg">
       <p class="font-bold text-xs uppercase tracking-wide">RD Framework</p>
       <p class="text-xs mt-1">
-        Parameters derived from clinical records via <span class="font-mono">Fe-plot</span> (\(\alpha/\beta\)) and <span class="font-mono">Hypo-plot</span> (\(D_q\)).
+        Classical Mode now uses <strong>\(\alpha/\beta\)</strong> and <strong>\(D_q\)</strong> to derive RD parameters.
       </p>
     </div>
 
@@ -42,6 +42,10 @@
     <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
       <div class="flex items-center justify-between border-b pb-2">
         <h2 class="text-lg font-semibold text-slate-700">1. Tissue Parameters</h2>
+        <div class="flex bg-slate-200 rounded-lg p-1 text-xs font-medium">
+          <button id="mode-classical" class="px-3 py-1 rounded-md transition-all shadow-sm bg-white text-slate-800">Classical</button>
+          <button id="mode-rd" class="px-3 py-1 rounded-md transition-all text-slate-500 hover:text-slate-700">RD Params</button>
+        </div>
       </div>
 
       <div>
@@ -68,7 +72,11 @@
         </div>
       </div>
 
-      <div class="space-y-2">
+      <div id="group-classical" class="space-y-2 transition-opacity duration-200">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-bold uppercase text-slate-400">Classical Input</span>
+          <div class="h-px bg-slate-200 flex-grow"></div>
+        </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">\(\alpha/\beta\) (Gy)</label>
@@ -77,6 +85,23 @@
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">\(D_q\) (Gy)</label>
             <input type="number" id="param-dq" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+          </div>
+        </div>
+      </div>
+
+      <div id="group-rd" class="space-y-2 transition-opacity duration-200">
+        <div class="flex items-center gap-2 mb-1 mt-2">
+          <span class="text-xs font-bold uppercase text-slate-400">RD Framework</span>
+          <div class="h-px bg-slate-200 flex-grow"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Resilience \(r\)</label>
+            <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Sens. \(s\) (1/Gy)</label>
+            <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
           </div>
         </div>
       </div>
@@ -106,6 +131,23 @@
           BED: <span id="bed-ref-text" class="font-bold">--</span>
         </div>
       </div>
+
+      <div class="pt-3 border-t border-slate-200 mt-3">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-xs uppercase tracking-wide text-slate-400 font-bold">EQD2 (2 Gy/fx)</span>
+          <span class="text-xs text-slate-400">updates automatically</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white border border-slate-200 rounded-lg p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Fractions</div>
+            <div id="ref-eqd2-fractions-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Total Dose</div>
+            <div id="ref-eqd2-total-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
@@ -123,30 +165,25 @@
     <div id="result-container" class="hidden animate-fade-in mt-6">
       <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
         <div class="space-y-3">
-
           <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
             <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">BED</span>
             <span id="bed-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
-
           <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
             <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Total Dose \(D_2\)</span>
             <span id="result-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
-
           <div class="flex justify-between items-center">
             <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Dose Per Fraction</span>
             <span id="dose-per-fraction-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
-
         </div>
       </div>
 
       <details class="mt-4 border border-slate-200 rounded-lg">
         <summary class="text-xs text-slate-500 p-2 hover:bg-slate-50 font-medium">Show Calculation Details</summary>
         <div class="text-xs text-slate-500 font-mono bg-slate-50 p-3 rounded-b-lg space-y-1">
-          <p>Derived \(r\): <span id="dbg-r"></span></p>
-          <p>Derived \(s\): <span id="dbg-s"></span></p>
+          <p>BED\(_{\text{ref}}\): <span id="dbg-bed1"></span></p>
           <p>\(K\): <span id="dbg-k"></span></p>
           <p>\(W(z)\): <span id="dbg-w"></span></p>
         </div>
