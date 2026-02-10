@@ -20,9 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const dpfText = document.getElementById('dose-per-fraction-text');
 
   // Reference-derived (LIVE)
-  const bedRefText = document.getElementById('bed-ref-text'); 
+  const bedRefText = document.getElementById('bed-ref-text');
   const refEqd2FractionsText = document.getElementById('ref-eqd2-fractions-text');
   const refEqd2TotalText = document.getElementById('ref-eqd2-total-text');
+
+  // Debug fields (optional in UI)
+  const dbgBed = document.getElementById('dbg-bed1');
+  const dbgK = document.getElementById('dbg-k');
+  const dbgW = document.getElementById('dbg-w');
 
   const inputs = {
     // Classical Inputs
@@ -44,8 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
   let suppress = false;
 
   // --- Numeric Tolerances ---
-  const ONE_R_EPS = 1e-9;  // 1-r -> 0
-  const W_EPS = 1e-14;     // Lambert W convergence
+  const ONE_R_EPS = 1e-9;  // 1-r -> 0 singularity threshold
+  const W_EPS = 1e-12;     // Lambert W convergence threshold (practical for JS)
+  const S_EPS = 1e-12;
+
+  // --- Helpers: safe exp for large magnitude ---
+  function expSafe(x) {
+    // JS Math.exp overflows > ~709.78
+    if (x > 709.0) return Infinity;
+    if (x < -745.0) return 0; // underflow to ~0
+    return Math.exp(x);
+  }
 
   // --- UI Helpers ---
   const setActive = (btn) => {
@@ -60,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hideResults() {
     resultContainer.classList.add('hidden');
+    // Close the details panel if it exists
+    const details = resultContainer.querySelector('details');
+    if (details) details.open = false;
   }
 
   function clearErrorsAndInvalid() {
@@ -82,6 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function toNum(v) {
+    // Robust: reject empty/whitespace explicitly
+    if (typeof v !== 'string' || v.trim() === '') return NaN;
     const x = parseFloat(v);
     return Number.isFinite(x) ? x : NaN;
   }
@@ -143,33 +162,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (shouldValidate(inputs.ab)) {
       if (!Number.isFinite(ab)) addError("α/β must be a valid number.", [inputs.ab]);
-      if (Math.abs(ab) < 1e-12) addError("α/β cannot be zero.", [inputs.ab]);
+      if (Number.isFinite(ab) && Math.abs(ab) < 1e-12) addError("α/β cannot be zero.", [inputs.ab]);
     }
     if (shouldValidate(inputs.dq)) {
       if (!Number.isFinite(dq)) addError("Dq must be a valid number.", [inputs.dq]);
-      if (Math.abs(dq) < 1e-12) addError("Dq cannot be zero.", [inputs.dq]);
+      if (Number.isFinite(dq) && Math.abs(dq) < 1e-12) addError("Dq cannot be zero.", [inputs.dq]);
     }
 
     if (shouldValidate(inputs.r)) {
       if (!Number.isFinite(r)) addError("r is invalid.", [inputs.r]);
+      // r≈1 causes 1/(1-r) blow-up; also r>1 makes standard BED normalization problematic.
       if (Number.isFinite(r) && (1 - r) <= ONE_R_EPS) addError("r ≈ 1 (singularity).", [inputs.r]);
     }
     if (shouldValidate(inputs.s)) {
       if (!Number.isFinite(s)) addError("s is invalid.", [inputs.s]);
+      // Allow negative s only if you explicitly intend it; otherwise disallow:
+      // if (Number.isFinite(s) && s <= 0) addError("s must be > 0.", [inputs.s]);
     }
 
     // Schedule
     if (shouldValidate(inputs.d1)) {
       const D1 = toNum(inputs.d1.value);
-      if (!(Number.isFinite(D1) && D1 > 0)) addError("Total Dose D1 > 0.", [inputs.d1]);
+      if (!(Number.isFinite(D1) && D1 > 0)) addError("Total Dose D1 must be > 0.", [inputs.d1]);
     }
     if (shouldValidate(inputs.n1)) {
       const n1 = toNum(inputs.n1.value);
-      if (!isPosInt(n1)) addError("n1 must be positive integer.", [inputs.n1]);
+      if (!isPosInt(n1)) addError("n1 must be a positive integer.", [inputs.n1]);
     }
     if (shouldValidate(inputs.n2)) {
       const n2 = toNum(inputs.n2.value);
-      if (!isPosInt(n2)) addError("n2 must be positive integer.", [inputs.n2]);
+      if (!isPosInt(n2)) addError("n2 must be a positive integer.", [inputs.n2]);
     }
 
     return !btnCalc.disabled;
@@ -185,10 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!Number.isFinite(AB) || !Number.isFinite(DQ)) return;
     if (Math.abs(AB) < 1e-12 || Math.abs(DQ) < 1e-12) return;
 
-    // RD Framework: r = ( sqrt(Dq^2 + 2*Dq*AB) - Dq ) / AB
-    // This allows exact geometric consistency with the shoulder and tail.
+    // r = ( sqrt(Dq^2 + 2 Dq (α/β)) - Dq ) / (α/β)
     const termInside = (DQ * DQ) + (2 * DQ * AB);
-    
     if (termInside < 0) {
       addError("Complex root detected (Dq, α/β mismatch).", [inputs.ab, inputs.dq]);
       return;
@@ -201,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputs.r.value = r.toFixed(6);
     inputs.s.value = s.toFixed(6);
     suppress = false;
-    
+
     validateAll(false, false);
   }
 
@@ -213,19 +233,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = toNum(inputs.s.value);
 
     if (!Number.isFinite(r) || !Number.isFinite(s)) return;
-    if (Math.abs(s) < 1e-12) return;
+    if (Math.abs(s) < 1e-12 || Math.abs(r) < 1e-12) return;
 
-    // Classical Inversion:
-    // Dq = r/s
-    // alpha/beta = 2(1-r)/(rs)
+    // Dq = r/s ; α/β = 2(1-r)/(r s)
     const DQ = r / s;
     const AB = (2 * (1 - r)) / (r * s);
 
     suppress = true;
     inputs.dq.value = DQ.toFixed(6);
-    inputs.ab.value = AB.toFixed(6);
+    // IMPORTANT: do NOT write "∞" into a numeric input; it will break parsing.
+    // If AB is non-finite, leave blank and let validation catch it.
+    inputs.ab.value = Number.isFinite(AB) ? AB.toFixed(6) : '';
     suppress = false;
-    
+
     validateAll(false, false);
   }
 
@@ -262,20 +282,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Preset Loading ---
   function initData() {
-    if (!window.RD_DATA) {
-      cellSelect.innerHTML = '<option value="">Error: datasrc.js not found</option>';
+    // Robustness: Check if external script loaded
+    if (typeof window.RD_DATA === 'undefined') {
+      cellSelect.innerHTML = '<option value="">Error: Data unavailable (network?)</option>';
+      cellSelect.disabled = true;
       return;
     }
+
     const isVerified = (v) => v === true || v === 1 || v === "true";
-    const keys = Object.keys(window.RD_DATA).filter(k => isVerified(window.RD_DATA[k]?.verified)).sort();
-    
-    cellSelect.innerHTML = '<option value="">— Select Verified Cell Line —</option>';
+    const keys = Object.keys(window.RD_DATA)
+      .filter(k => isVerified(window.RD_DATA[k]?.verified))
+      .sort();
+
+    cellSelect.innerHTML = '<option value="">— Select Cell Line —</option>';
     if (keys.length === 0) {
       cellSelect.innerHTML = '<option value="">No verified datasets</option>';
       cellSelect.disabled = true;
       return;
     }
     cellSelect.disabled = false;
+
     keys.forEach(key => {
       const opt = document.createElement('option');
       opt.value = key;
@@ -292,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const prevMode = currentMode;
     const key = cellSelect.value;
+
     if (!key || !window.RD_DATA[key]) {
       cellDesc.textContent = "";
       sourceBox.classList.add('hidden');
@@ -301,14 +328,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const data = window.RD_DATA[key];
     suppress = true;
-    
-    // Load α/β and Dq (D0 is available in data but not needed for isoeffect)
+
+    // Load α/β and Dq
     inputs.ab.value = data.alpha_by_beta ?? '';
     inputs.dq.value = data.D_q ?? '';
 
     // Clear RD/Schedule
-    inputs.r.value = ''; inputs.s.value = '';
-    inputs.d1.value = ''; inputs.n1.value = ''; inputs.n2.value = '';
+    inputs.r.value = '';
+    inputs.s.value = '';
+    inputs.d1.value = '';
+    inputs.n1.value = '';
+    inputs.n2.value = '';
 
     suppress = false;
     convertClassicalToRD();
@@ -333,17 +363,27 @@ document.addEventListener('DOMContentLoaded', () => {
   function bedUnified(D, n, r, s) {
     const one_r = 1 - r;
     if (!Number.isFinite(D) || !Number.isFinite(n) || D <= 0 || n <= 0) return NaN;
-    if (Math.abs(s) < 1e-12) return D;
-    
+    if ((1 - r) <= ONE_R_EPS) return NaN; // singular
+
+    // Limit case s -> 0: use series limit of (1 - e^{-s D/n})/s -> D/n
+    if (Math.abs(s) < S_EPS) {
+      // BED = D/(1-r) - (n r)/(s(1-r))*(1-e^{-s D/n})
+      // -> D/(1-r) - (n r)/(1-r) * (D/n) = D
+      return D;
+    }
+
     const x = -s * (D / n);
-    const oneMinusExp = -Math.expm1(x); 
+    const oneMinusExp = -Math.expm1(x); // 1 - e^{-s D/n} (stable)
     return (D / one_r) - ((n * r) / (s * one_r)) * oneMinusExp;
   }
 
   function denomBEDperFrac2Gy(r, s) {
     const one_r = 1 - r;
-    if (Math.abs(s) < 1e-12) return 2;
-    const termExp2 = -Math.expm1(-2 * s);
+    if ((1 - r) <= ONE_R_EPS) return NaN;
+
+    if (Math.abs(s) < S_EPS) return 2; // consistent with limit BED = D
+
+    const termExp2 = -Math.expm1(-2 * s); // 1 - e^{-2s}
     return (2 / one_r) - (r / (s * one_r)) * termExp2;
   }
 
@@ -359,34 +399,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
 
-    // Basic validity
     if (!(Number.isFinite(D1) && D1 > 0 && isPosInt(n1))) {
       clearReferenceDerived();
       return;
     }
 
-    // Get RD params
     const r = toNum(inputs.r.value);
     const s = toNum(inputs.s.value);
-    
-    if (!(Number.isFinite(r) && Number.isFinite(s))) {
+
+    if (!Number.isFinite(r) || !Number.isFinite(s)) {
+      clearReferenceDerived();
+      return;
+    }
+    if ((1 - r) <= ONE_R_EPS) {
       clearReferenceDerived();
       return;
     }
 
-    // Calc BED
     const BED1 = bedUnified(D1, n1, r, s);
     if (!Number.isFinite(BED1)) {
       clearReferenceDerived();
       return;
     }
 
-    // Calc EQD2
     const bed2Gy = denomBEDperFrac2Gy(r, s);
     let nEqd2 = 0;
     let D_Eqd2 = 0;
 
-    if (Number.isFinite(bed2Gy) && bed2Gy > 0) {
+    if (Number.isFinite(bed2Gy) && bed2Gy > 1e-9) {
       nEqd2 = BED1 / bed2Gy;
       D_Eqd2 = nEqd2 * 2;
     }
@@ -404,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (bedText) bedText.textContent = "";
       onChange();
       updateReferenceDerived();
+      // Only re-run non-strict validation if there are errors currently shown
       if (errorContainer.innerHTML !== "") validateAll(false, false);
     });
   }
@@ -418,46 +459,74 @@ document.addEventListener('DOMContentLoaded', () => {
   attachInputBehavior(inputs.n1, () => {}, false);
   attachInputBehavior(inputs.n2, () => {}, false);
 
-  // --- Lambert W0 ---
+  // --- Robust Lambert W0 (Principal Branch) ---
+  // Halley's method + branch-point initialization near z ~ -1/e.
   function lambertW0(z) {
-    const minZ = -1 / Math.E;
     if (!Number.isFinite(z)) return NaN;
-    if (z < minZ - 1e-12) return NaN;
-    if (Math.abs(z - minZ) < 1e-12) return -1;
-    if (Math.abs(z) < W_EPS) return 0;
+
+    const minZ = -1 / Math.E;
+    if (z < minZ - 1e-15) return NaN;
+    if (Math.abs(z - minZ) < 1e-15) return -1;
+    if (Math.abs(z) < 1e-16) return 0;
+
     let w;
-    if (z < 0) {
-      w = Math.log1p(z);
-      if (!Number.isFinite(w)) w = -0.5;
-      if (w < -0.999999999) w = -0.999999999;
-    } else if (z > 1) {
-      w = Math.log(z);
+
+    // Initial guess
+    if (z < -0.3) {
+      // Near branch point: w ≈ -1 + p - p^2/3, p = sqrt(2(e z + 1))
+      const t = Math.E * z + 1;
+      const p = Math.sqrt(Math.max(0, 2 * t));
+      w = -1 + p - (p * p) / 3;
+      // keep in principal branch domain
+      if (w > 0) w = -0.1;
+      if (w < -1) w = -1;
+    } else if (z < 1) {
+      w = z; // good near 0
     } else {
-      w = z;
+      // large z
+      w = Math.log(z) - Math.log(Math.log(z));
     }
-    for (let i = 0; i < 50; i++) {
-      const ew = Math.exp(w);
-      const f = w * ew - z;
+
+    // Halley's iterations
+    for (let i = 0; i < 30; i++) {
+      const ew = expSafe(w);
+      const wew = w * ew;
+      const f = wew - z;
+
       const wp1 = w + 1;
-      const denom = ew * wp1 - (wp1 + 1) * f / (2 * wp1);
-      if (Math.abs(denom) < 1e-18) break;
-      let dw = f / denom;
-      dw = Math.max(Math.min(dw, 1), -1);
+      if (Math.abs(wp1) < 1e-15) {
+        // avoid division blow-up near w=-1
+        w += 1e-6;
+        continue;
+      }
+
+      // Halley denominator:
+      // w_{n+1} = w - f / ( ew*(w+1) - (w+2)*f/(2*(w+1)) )
+      const denom = ew * wp1 - ((w + 2) * f) / (2 * wp1);
+      if (!Number.isFinite(denom) || Math.abs(denom) < 1e-18) break;
+
+      const dw = f / denom;
       w -= dw;
-      if (Math.abs(dw) < 1e-12) break;
+
+      if (!Number.isFinite(w)) return NaN;
+      if (Math.abs(dw) < W_EPS) break;
     }
+
     return w;
   }
 
   // --- Display Result Helper ---
   function updateResultUI(BED_val, D2_val, n2_val, K_val, W_val) {
     const d2_val = D2_val / n2_val;
-    bedText.textContent = `${BED_val.toFixed(2)} Gy`;
-    resultText.textContent = `${D2_val.toFixed(2)} Gy`;
-    dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
-    document.getElementById('dbg-bed1').textContent = BED_val.toFixed(6);
-    document.getElementById('dbg-k').textContent = K_val !== null ? K_val.toFixed(6) : "—";
-    document.getElementById('dbg-w').textContent = W_val !== null ? W_val.toFixed(6) : "—";
+
+    if (bedText) bedText.textContent = `${BED_val.toFixed(2)} Gy`;
+    if (resultText) resultText.textContent = `${D2_val.toFixed(2)} Gy`;
+    if (dpfText) dpfText.textContent = `${d2_val.toFixed(2)} Gy`;
+
+    if (dbgBed) dbgBed.textContent = BED_val.toFixed(6);
+    if (dbgK) dbgK.textContent = (K_val !== null && Number.isFinite(K_val)) ? K_val.toFixed(6) : "—";
+    if (dbgW) dbgW.textContent = (W_val !== null && Number.isFinite(W_val)) ? W_val.toFixed(6) : "—";
+
     resultContainer.classList.remove('hidden');
     resultContainer.scrollIntoView({ behavior: 'smooth' });
   }
@@ -470,39 +539,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!validateAll(true, true)) return;
 
-    // For calculation, we rely on r and s (which are updated by convert functions)
     const r = toNum(inputs.r.value);
     const s = toNum(inputs.s.value);
-    
-    // Safety check
+
     if (!needFinite("r", r, [inputs.r])) return;
     if (!needFinite("s", s, [inputs.s])) return;
+
     if ((1 - r) <= ONE_R_EPS) {
-        addError("Calculation singularity (r ≈ 1).", [inputs.r]);
-        return;
+      addError("Calculation singularity (r ≈ 1).", [inputs.r]);
+      return;
+    }
+    if (Math.abs(s) < S_EPS) {
+      addError("s is too close to zero for stable inversion.", [inputs.s]);
+      return;
     }
 
     const D1 = toNum(inputs.d1.value);
     const n1 = toNum(inputs.n1.value);
     const n2 = toNum(inputs.n2.value);
-    
-    // Calculate BED1 using Unified RD formula
-    const BED1 = bedUnified(D1, n1, r, s);
 
-    // Calculate Isoeffective D2 using Lambert-W inversion
+    if (!needFinite("D1", D1, [inputs.d1])) return;
+    if (!needFinite("n1", n1, [inputs.n1])) return;
+    if (!needFinite("n2", n2, [inputs.n2])) return;
+
+    const BED1 = bedUnified(D1, n1, r, s);
+    if (!Number.isFinite(BED1)) {
+      addError("BED computation failed (check parameters).", [inputs.r, inputs.s]);
+      return;
+    }
+
     const one_r = 1 - r;
     const K = r + (s * one_r / n2) * BED1;
-    const arg = -r * Math.exp(-K);
-    const w_val = lambertW0(arg);
 
+    // arg = -r exp(-K) with exp clamp for stability
+    const eNegK = expSafe(-K);
+    if (!Number.isFinite(eNegK)) {
+      addError("Numeric overflow in exp(-K). Please check inputs.", []);
+      return;
+    }
+    const arg = -r * eNegK;
+
+    const w_val = lambertW0(arg);
     if (!Number.isFinite(w_val)) {
-      addError("Lambert-W failure: parameters out of domain.", []);
+      addError("Lambert-W failure: parameters out of domain / non-physical root.", [inputs.r, inputs.s]);
       return;
     }
 
     const D2 = (n2 / s) * (K + w_val);
     if (!(Number.isFinite(D2) && D2 > 0)) {
-      addError("Computed D2 is non-physical.", []);
+      addError("Computed D2 is non-physical (negative or infinite).", []);
       return;
     }
 
