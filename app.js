@@ -274,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setMode(mode) {
-    if (currentMode === mode) return;
     currentMode = mode;
     hideResults();
     validateAll(false, false);
@@ -315,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Preset Select ---
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
@@ -345,8 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
     inputs.n2.value = '';
 
     suppress = false;
-    
-    // Always calculate derived params regardless of current mode
     convertClassicalToRD();
 
     cellDesc.textContent = data.desc || "";
@@ -390,14 +388,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Math.abs(s) < S_EPS) return 2; // consistent with limit BED = D
 
     const termExp2 = -Math.expm1(-2 * s); // 1 - e^{-2s}
-    return (2 / one_r) - (r / (s * one_r)) * termExp2;
-  }
-
-  function denomBEDperFrac2Gy(r, s) {
-    const one_r = 1 - r;
-    if (Math.abs(s) < S_EPS) return 2;
-    
-    const termExp2 = -Math.expm1(-2 * s);
     return (2 / one_r) - (r / (s * one_r)) * termExp2;
   }
 
@@ -450,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refEqd2TotalText.textContent = D_Eqd2 > 0 ? `${D_Eqd2.toFixed(2)} Gy` : "--";
   }
 
+  // --- Input Listeners ---
   function attachInputBehavior(el, onChange, detachPreset = false) {
     el.addEventListener('input', () => {
       hideResults();
@@ -482,7 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Math.abs(z - minZ) < 1e-15) return -1;
     if (Math.abs(z) < 1e-16) return 0;
 
-    // Initial Guess
     let w;
 
     // Initial guess
@@ -529,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return w;
   }
 
+  // --- Display Result Helper ---
   function updateResultUI(BED_val, D2_val, n2_val, K_val, W_val) {
     const d2_val = D2_val / n2_val;
 
@@ -544,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resultContainer.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // --- MAIN CALCULATION TRIGGER ---
+  // --- MAIN CALCULATION ---
   btnCalc.addEventListener('click', () => {
     hideResults();
     clearErrorsAndInvalid();
@@ -610,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Initialization ---
   initData();
   updateModeUI();
+  updateDpf();
   updateReferenceDerived();
   validateAll(false, false);
 });
