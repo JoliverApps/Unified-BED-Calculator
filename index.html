@@ -31,10 +31,18 @@
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
   <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
 
-    <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-900 p-4 rounded-lg">
-      <p class="font-bold text-xs uppercase tracking-wide">Clinical Disclaimer</p>
-      <p class="text-xs mt-1 leading-relaxed">
-	Companion to the paper (formula feasibility only). Use at your own risk; author(s) assume no liability.
+    <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg">
+      <div class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <p class="font-bold text-xs uppercase tracking-wide">Research Use Only</p>
+      </div>
+      <p class="text-xs mt-2 font-medium">
+        This app is a companion to the paper to show formula feasibility only. Use at your own risk; author(s) assume no liability.
+      </p>
+      <p class="text-xs mt-2 border-t border-yellow-200 pt-2">
+        Classical Mode uses <strong>\(\alpha/\beta\)</strong> and <strong>\(D_q\)</strong> to derive RD parameters.
       </p>
     </div>
 
@@ -107,7 +115,7 @@
             <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Sens. \(s\) (1/Gy)</label>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Sensitization \(s\) (1/Gy)</label>
             <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
           </div>
         </div>
@@ -145,12 +153,12 @@
           <span class="text-xs text-slate-400">Auto-calculated</span>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
-            <div class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Fractions</div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Fractions</div>
             <div id="ref-eqd2-fractions-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
           </div>
-          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
-            <div class="text-[10px] uppercase tracking-wide text-slate-400 font-bold">Total Dose</div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3">
+            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Total Dose</div>
             <div id="ref-eqd2-total-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
           </div>
         </div>
@@ -172,12 +180,12 @@
     <div id="result-container" class="hidden animate-fade-in mt-6">
       <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 shadow-sm">
         <div class="space-y-3">
-          <div class="flex justify-between items-center border-b border-indigo-200 pb-2">
-            <span class="text-xs uppercase tracking-wide text-indigo-500 font-bold">Unified BED</span>
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">BED</span>
             <span id="bed-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
-          <div class="flex justify-between items-center border-b border-indigo-200 pb-2">
-            <span class="text-xs uppercase tracking-wide text-indigo-500 font-bold">New Total Dose \(D_2\)</span>
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Total Dose \(D_2\)</span>
             <span id="result-text" class="text-lg font-bold text-indigo-700"></span>
           </div>
           <div class="flex justify-between items-center">
@@ -201,7 +209,7 @@
     </div>
 
     <div class="text-center text-xs text-slate-400 pt-6 border-t border-slate-200">
-      <p>Data Source: <a href="./datasrc.js" target="_blank" class="underline hover:text-slate-600">datasrc.js</a></p>
+      <p>Data Source: <a href="https://joliverapps.github.io/Unified-BED-Calculator/datasrc.js" target="_blank" class="underline hover:text-slate-600">datasrc.js</a></p>
     </div>
   </div>
 
