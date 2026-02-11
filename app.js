@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return !btnCalc.disabled;
   }
 
-  // --- Conversion Classical (AB, Dq) -> RD (r, s) ---
+// --- Conversion Classical (AB, Dq) -> RD (r, s) ---
   function convertClassicalToRD() {
     if (suppress) return;
 
@@ -207,14 +207,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!Number.isFinite(AB) || !Number.isFinite(DQ)) return;
     if (Math.abs(AB) < 1e-12 || Math.abs(DQ) < 1e-12) return;
 
-    // r = ( sqrt(Dq^2 + 2 Dq (α/β)) - Dq ) / (α/β)
-    const termInside = (DQ * DQ) + (2 * DQ * AB);
+    // UPDATED FORMULA: r = 2 * [ (sqrt(Dq^2 + Dq(α/β)) - Dq) / (α/β) ]
+    // Note: The term inside the sqrt is Dq^2 + Dq*(α/β). 
+    // The previous version had a factor of 2 inside; the new version has a factor of 2 outside.
+    const termInside = (DQ * DQ) + (DQ * AB); 
+    
     if (termInside < 0) {
       addError("Complex root detected (Dq, α/β mismatch).", [inputs.ab, inputs.dq]);
       return;
     }
 
-    const r = (Math.sqrt(termInside) - DQ) / AB;
+    const r = 2 * ((Math.sqrt(termInside) - DQ) / AB);
     const s = r / DQ;
 
     suppress = true;
@@ -224,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     validateAll(false, false);
   }
-
+  
   // --- Conversion RD (r, s) -> Classical (AB, Dq) ---
   function convertRDToClassical() {
     if (suppress) return;
@@ -235,20 +238,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!Number.isFinite(r) || !Number.isFinite(s)) return;
     if (Math.abs(s) < 1e-12 || Math.abs(r) < 1e-12) return;
 
-    // Dq = r/s ; α/β = 2(1-r)/(r s)
+    // UPDATED FORMULA: 
+    // Dq = r/s 
+    // α/β (clinic) = 4 * (1-r)/(r s)
+    // (This is 2x the internal RD ratio, so the numerator factor becomes 4)
     const DQ = r / s;
-    const AB = (2 * (1 - r)) / (r * s);
+    const AB = (4 * (1 - r)) / (r * s);
 
     suppress = true;
     inputs.dq.value = DQ.toFixed(6);
-    // IMPORTANT: do NOT write "∞" into a numeric input; it will break parsing.
-    // If AB is non-finite, leave blank and let validation catch it.
     inputs.ab.value = Number.isFinite(AB) ? AB.toFixed(6) : '';
     suppress = false;
 
     validateAll(false, false);
   }
-
+  
   // --- UI Mode Switching ---
   function updateModeUI() {
     const classicalInputs = [inputs.ab, inputs.dq];
