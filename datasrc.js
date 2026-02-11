@@ -14,7 +14,7 @@
 window.RD_DATA = {
 
   "NSCLC (average by Park et al)": {
-    alpha_by_beta: 4.302399,
+    alpha_by_beta: 8.604798, 
     D_q: 1.8,
     D0: 1.25,
     desc: "NCI-H460 Non-Small Cell Lung Cancer. Parameters explicitly used to derive and validate the Universal Survival Curve (USC) model.",
@@ -24,7 +24,7 @@ window.RD_DATA = {
   },
 
   "CHO-K1 (Original paper)": {
-    alpha_by_beta: 0.492297,
+    alpha_by_beta: 0.984594,
     D_q: 3.917012,
     D0: 1.100110,
     desc: "From Oliveira, JM original paper. Demonstrates high-shoulder behavior with low alpha/beta ratio.",
@@ -34,7 +34,7 @@ window.RD_DATA = {
   },
 
   "XRS6 (Original paper)": {
-    alpha_by_beta: -2.485016,
+    alpha_by_beta: -4.970032,
     D_q: -1.034257,
     D0: 1.461988,
     desc: "From Oliveira, JM original paper. Represents a repair-deficient phenotype with negative shoulder displacement.",
