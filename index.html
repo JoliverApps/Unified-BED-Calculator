@@ -17,180 +17,147 @@
     };
   </script>
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
   <link rel="stylesheet" href="./styles.css" />
+
+  <style>
+    input:disabled {
+      background-color: #f8fafc !important;
+      color: #94a3b8 !important;
+      border-color: #e2e8f0 !important;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 
-<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
-  <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
-
-    <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg">
-      <div class="flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-        </svg>
-        <p class="font-bold text-xs uppercase tracking-wide">Research Use Only</p>
-      </div>
-      <p class="text-xs mt-2 font-medium">
-        This app is a companion to the paper to show formula feasibility only. Use at your own risk; author(s) assume no liability.
-      </p>
-      <p class="text-xs mt-2 border-t border-yellow-200 pt-2">
-        Classical Mode uses <strong>\(\alpha/\beta\)</strong> and <strong>\(D_q\)</strong> to derive RD parameters.
-      </p>
-    </div>
-
-    <div class="text-center">
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Unified BED Calculator</h1>
-      <p class="text-slate-500 mt-2 text-sm">Exact isoeffect solution via Lambert-\(W\)</p>
-      <div class="my-3 text-sm overflow-x-auto text-slate-600">
-        $$ \mathrm{BED}(D,n) = \frac{D}{1-r} - \frac{n r}{s(1-r)}\Bigl(1-e^{-s D/n}\Bigr) $$
-      </div>
-    </div>
-
-    <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-      <div class="flex items-center justify-between border-b pb-2">
-        <h2 class="text-lg font-semibold text-slate-700">1. Tissue Parameters</h2>
-        <div class="flex bg-slate-200 rounded-lg p-1 text-xs font-medium">
-          <button id="mode-classical" class="px-3 py-1 rounded-md transition-all shadow-sm bg-white text-slate-800">Classical</button>
-          <button id="mode-rd" class="px-3 py-1 rounded-md transition-all text-slate-500 hover:text-slate-700">RD Params</button>
-        </div>
-      </div>
-
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-2 md:p-4">
+  <div class="w-full max-w-3xl bg-white rounded-xl shadow-lg p-5 space-y-5">
+    
+    <header class="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b pb-4">
       <div>
-        <div class="flex items-center justify-between gap-4">
-          <label for="cell-line-select" class="text-sm font-medium text-slate-600">Preset:</label>
-          <select id="cell-line-select" class="w-3/5 md:w-2/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition text-sm">
-            <option value="">Loading data...</option>
-          </select>
+        <h1 class="text-2xl font-bold text-slate-800 leading-tight">Unified BED Calculator</h1>
+        <p class="text-slate-500 text-sm mt-1">Exact isoeffect solution via Lambert-\(W\)</p>
+      </div>
+      <details class="group bg-yellow-50 border border-yellow-200 rounded-lg max-w-sm">
+        <summary class="list-none cursor-pointer p-2 text-xs font-bold text-yellow-700 uppercase tracking-widest flex items-center gap-2">
+          <span class="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-[10px]">!</span> Research Use Only
+        </summary>
+        <div class="p-3 pt-0 text-xs text-yellow-800 leading-relaxed border-t border-yellow-100">
+          This app is a companion to the paper to show formula feasibility only. Use at your own risk; author(s) assume no liability. 
+          Classical Mode uses \(\alpha/\beta\) and \(D_q\) to derive RD parameters.
+        </div>
+      </details>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      
+      <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <h2 class="text-sm font-bold text-slate-700">1. Tissue Parameters</h2>
+          <div class="flex bg-slate-200 rounded p-1 text-xs font-medium">
+            <button id="mode-classical" class="px-2 py-1 rounded transition-all shadow-sm bg-white text-slate-800">Classical</button>
+            <button id="mode-rd" class="px-2 py-1 rounded transition-all text-slate-500 hover:text-slate-700">RD Params</button>
+          </div>
         </div>
 
-        <p id="cell-desc" class="text-xs text-slate-400 mt-2 italic text-right min-h-[1rem]"></p>
-
-        <div id="source-box" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 fade-in">
-          <div class="mb-1">
-            <span class="font-bold">Source:</span>
-            <div id="source-text" class="mt-1 text-slate-700"></div>
+        <div>
+          <select id="cell-line-select" class="w-full px-2 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 text-sm">
+            <option value="">— Select Preset —</option>
+          </select>
+          <p id="cell-desc" class="text-xs text-slate-400 mt-1 italic min-h-[1rem]"></p>
+          
+          <div id="source-box" class="hidden mt-2 p-2 bg-white border border-slate-200 rounded text-xs text-slate-700">
+            <span class="font-bold">Source:</span> <span id="source-text"></span><br>
+            <a id="source-url" href="#" target="_blank" class="underline text-indigo-500">View Reference</a>
           </div>
-          <div class="grid grid-cols-1 gap-1 mt-2">
+        </div>
+
+        <div id="group-classical" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">\(\alpha/\beta\) (Gy)</label>
+            <input type="number" id="param-ab" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">\(D_q\) (Gy)</label>
+            <input type="number" id="param-dq" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div id="group-rd" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Resilience \(r\)</label>
+            <input type="number" id="param-r" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Sens. \(s\) (1/Gy)</label>
+            <input type="number" id="param-s" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+        <div id="error-container" class="text-xs text-red-600 font-medium hidden"></div>
+      </div>
+
+      <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col justify-between">
+        <div>
+          <h2 class="text-sm font-bold text-slate-700 border-b border-slate-200 pb-2 mb-3">2. Schedules</h2>
+          
+          <div class="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <span class="font-bold">URL:</span>
-              <a id="source-url" class="underline text-slate-700" href="#" target="_blank" rel="noopener noreferrer"></a>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Ref Dose \(D_1\)</label>
+              <input type="number" id="dose-d1" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Ref \(n_1\)</label>
+              <input type="number" id="fractions-n1" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
           </div>
-        </div>
-      </div>
 
-      <div id="group-classical" class="space-y-2 transition-opacity duration-200">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-bold uppercase text-slate-400">Classical Input</span>
-          <div class="h-px bg-slate-200 flex-grow"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white p-3 rounded border border-slate-200 text-xs space-y-1 mb-4">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Ref Dose/Fx:</span>
+              <span class="text-slate-800 font-bold"><span id="original-dpf">--</span> Gy</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Reference BED:</span>
+              <span class="text-slate-800 font-bold"><span id="bed-ref-text">--</span></span>
+            </div>
+            <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+              <span class="text-slate-500">EQD2 (2 Gy/fx):</span>
+              <span class="text-indigo-600 font-bold"><span id="ref-eqd2-total-text">--</span> <span class="text-slate-400 font-normal ml-1">(<span id="ref-eqd2-fractions-text">--</span> fx)</span></span>
+            </div>
+          </div>
+
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">\(\alpha/\beta\) (Gy)</label>
-            <input type="number" id="param-ab" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">\(D_q\) (Gy)</label>
-            <input type="number" id="param-dq" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
-          </div>
-        </div>
-      </div>
-
-      <div id="group-rd" class="space-y-2 transition-opacity duration-200">
-        <div class="flex items-center gap-2 mb-1 mt-2">
-          <span class="text-xs font-bold uppercase text-slate-400">RD Framework</span>
-          <div class="h-px bg-slate-200 flex-grow"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Resilience \(r\)</label>
-            <input type="number" id="param-r" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Sensitization \(s\) (1/Gy)</label>
-            <input type="number" id="param-s" step="any" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
-          </div>
-        </div>
-      </div>
-
-      <div id="error-container" class="space-y-1 pt-2 border-t border-red-100 hidden"></div>
-    </div>
-
-    <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-      <h2 class="text-lg font-semibold text-slate-700">2. Reference Schedule</h2>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-sm font-medium text-slate-600">Total Dose \(D_1\)</label>
-          <input type="number" id="dose-d1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="> 0">
-        </div>
-        <div>
-          <label class="text-sm font-medium text-slate-600">Fractions \(n_1\)</label>
-          <input type="number" id="fractions-n1" class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between text-xs text-slate-500">
-        <div>
-          Dose/Fx: <span id="original-dpf" class="font-bold">--</span> Gy
-        </div>
-        <div>
-          BED: <span id="bed-ref-text" class="font-bold">--</span>
-        </div>
-      </div>
-
-      <div class="pt-3 border-t border-slate-200 mt-3">
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-xs uppercase tracking-wide text-slate-400 font-bold">EQD2 (2 Gy/fx)</span>
-          <span class="text-xs text-slate-400">updates automatically</span>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-white border border-slate-200 rounded-lg p-3">
-            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Fractions</div>
-            <div id="ref-eqd2-fractions-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
-          </div>
-          <div class="bg-white border border-slate-200 rounded-lg p-3">
-            <div class="text-xs uppercase tracking-wide text-slate-400 font-bold">Total Dose</div>
-            <div id="ref-eqd2-total-text" class="text-lg font-bold text-slate-800 mt-1">--</div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Target Fractions \(n_2\)</label>
+            <input type="number" id="fractions-n2" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
         </div>
       </div>
     </div>
 
-    <div class="space-y-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-      <h2 class="text-lg font-semibold text-slate-700">3. Target Schedule</h2>
-      <div class="flex items-center justify-between gap-4">
-        <label class="text-sm font-medium text-slate-600">New Fractions \(n_2\):</label>
-        <input type="number" id="fractions-n2" class="w-1/3 px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 text-sm" placeholder="Integer">
-      </div>
-    </div>
-
-    <button id="calculate-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 shadow-lg transition-transform transform active:scale-95">
+    <button id="calculate-btn" class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-lg hover:bg-indigo-700 shadow-lg transition-transform transform active:scale-[0.99] text-lg">
       Calculate Equivalence
     </button>
 
-    <div id="result-container" class="hidden animate-fade-in mt-6">
+    <div id="result-container" class="hidden animate-fade-in space-y-3">
       <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
-        <div class="space-y-3">
-          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
-            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">BED</span>
-            <span id="bed-text" class="text-lg font-bold text-indigo-700"></span>
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <div class="text-xs uppercase tracking-wide text-indigo-500 font-bold mb-1">New Total \(D_2\)</div>
+            <div id="result-text" class="text-3xl font-bold text-indigo-700">--</div>
           </div>
-          <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
-            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Total Dose \(D_2\)</span>
-            <span id="result-text" class="text-lg font-bold text-indigo-700"></span>
+          <div class="border-l border-indigo-200">
+            <div class="text-xs uppercase tracking-wide text-indigo-500 font-bold mb-1">Dose/Fx</div>
+            <div id="dose-per-fraction-text" class="text-3xl font-bold text-indigo-700">--</div>
           </div>
-          <div class="flex justify-between items-center">
-            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">New Dose Per Fraction</span>
-            <span id="dose-per-fraction-text" class="text-lg font-bold text-indigo-700"></span>
+          <div class="col-span-2 pt-3 border-t border-indigo-100 mt-1">
+            <span class="text-xs uppercase tracking-wide text-indigo-400 font-bold">BED Output: </span>
+            <span id="bed-text" class="text-sm font-bold text-indigo-700 ml-1">--</span>
           </div>
         </div>
       </div>
-
-      <details class="mt-4 border border-slate-200 rounded-lg">
-        <summary class="text-xs text-slate-500 p-2 hover:bg-slate-50 font-medium">Show Calculation Details</summary>
-        <div class="text-xs text-slate-500 font-mono bg-slate-50 p-3 rounded-b-lg space-y-1">
+      
+      <details class="text-xs text-slate-500 border border-slate-200 rounded-lg">
+        <summary class="cursor-pointer p-2.5 hover:bg-slate-50 font-medium">Show Calculation Details</summary>
+        <div class="p-3 bg-slate-50 font-mono space-y-1.5 border-t border-slate-200 rounded-b-lg">
           <p>BED\(_{\text{ref}}\): <span id="dbg-bed1"></span></p>
           <p>\(K\): <span id="dbg-k"></span></p>
           <p>\(W(z)\): <span id="dbg-w"></span></p>
@@ -199,34 +166,31 @@
     </div>
 
     <details class="mt-6 border border-slate-200 rounded-lg bg-white shadow-sm group">
-  <summary class="text-sm font-semibold text-slate-700 p-4 cursor-pointer hover:bg-slate-50 transition-colors list-none flex justify-between items-center outline-none">
-    <span>Extra Tools & Extensions</span>
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 transform transition-transform duration-200 group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
-      <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-    </svg>
-  </summary>
-  
-  <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3 rounded-b-lg">
-    <a href="hypoRationale.html" class="block p-3 bg-white border border-slate-200 rounded-md hover:border-indigo-400 hover:shadow-sm transition-all group/link">
-      <div class="flex items-center justify-between">
-        <div>
-          <h4 class="text-sm font-bold text-indigo-700 group-hover/link:text-indigo-800">Hypofractionation Rationale</h4>
-          <p class="text-xs text-slate-500 mt-1">Evaluate therapeutic advantage via RD resilience margins.</p>
-        </div>
-          <span class="text-indigo-400 group-hover/link:text-indigo-600 transition-transform transform group-hover/link:translate-x-1">&rarr;</span>
-        </div>
-      </a>
+      <summary class="text-sm font-semibold text-slate-700 p-4 cursor-pointer hover:bg-slate-50 transition-colors list-none flex justify-between items-center outline-none">
+        <span>Extra Tools & Extensions</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 transform transition-transform duration-200 group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </summary>
+      
+      <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3 rounded-b-lg">
+        <a href="hypoRationale.html" class="block p-3 bg-white border border-slate-200 rounded-md hover:border-indigo-400 hover:shadow-sm transition-all group/link">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-sm font-bold text-indigo-700 group-hover/link:text-indigo-800">Hypofractionation Rationale</h4>
+              <p class="text-xs text-slate-500 mt-1">Evaluate therapeutic advantage via RD resilience margins.</p>
+            </div>
+            <span class="text-indigo-400 group-hover/link:text-indigo-600 transition-transform transform group-hover/link:translate-x-1">&rarr;</span>
+          </div>
+        </a>
+      </div>
+    </details>
+    <div class="text-center text-xs text-slate-400 pt-2">
+      <a href="https://joliverapps.github.io/Unified-BED-Calculator/datasrc.js" target="_blank" class="hover:underline">View Source Data</a>
+    </div>
 
-    </div>
-  </details>
-    
-    <div class="text-center text-xs text-slate-400 pt-6 border-t border-slate-200">
-      <p>Data Source: <a href="https://joliverapps.github.io/Unified-BED-Calculator/datasrc.js" target="_blank" class="underline hover:text-slate-600">datasrc.js</a></p>
-    </div>
   </div>
 
   <script src="./bedCalc.js"></script>
 </body>
 </html>
-
-
