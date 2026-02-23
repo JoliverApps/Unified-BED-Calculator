@@ -198,18 +198,35 @@
       </details>
     </div>
 
-    <div class="mt-2 mb-6 text-center">
-      <a href="hypoRationale.html" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-colors">
-      Evaluate Hypofractionation Strategy &rarr;
+    <details class="mt-6 border border-slate-200 rounded-lg bg-white shadow-sm group">
+  <summary class="text-sm font-semibold text-slate-700 p-4 cursor-pointer hover:bg-slate-50 transition-colors list-none flex justify-between items-center outline-none">
+    <span>Extra Tools & Extensions</span>
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 transform transition-transform duration-200 group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+    </svg>
+  </summary>
+  
+  <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3 rounded-b-lg">
+    <a href="hypoRationale.html" class="block p-3 bg-white border border-slate-200 rounded-md hover:border-indigo-400 hover:shadow-sm transition-all group/link">
+      <div class="flex items-center justify-between">
+        <div>
+          <h4 class="text-sm font-bold text-indigo-700 group-hover/link:text-indigo-800">Hypofractionation Rationale</h4>
+          <p class="text-xs text-slate-500 mt-1">Evaluate therapeutic advantage via RD resilience margins.</p>
+        </div>
+          <span class="text-indigo-400 group-hover/link:text-indigo-600 transition-transform transform group-hover/link:translate-x-1">&rarr;</span>
+        </div>
       </a>
-    </div>
 
+    </div>
+  </details>
+    
     <div class="text-center text-xs text-slate-400 pt-6 border-t border-slate-200">
       <p>Data Source: <a href="https://joliverapps.github.io/Unified-BED-Calculator/datasrc.js" target="_blank" class="underline hover:text-slate-600">datasrc.js</a></p>
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./bedCalc.js"></script>
 </body>
 </html>
+
 
