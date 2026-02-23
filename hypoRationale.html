@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hypofractionation Rationale (RD Framework)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(','\\)'], ['$', '$']] },
+      options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+  <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
+
+    <div class="flex justify-between items-start">
+      <a href="index.html" class="text-indigo-600 text-sm hover:underline flex items-center gap-1">
+        &larr; Back to Calculator
+      </a>
+    </div>
+
+    <div class="text-center">
+      <h1 class="text-2xl font-bold text-slate-800">Hypofractionation Rationale</h1>
+      <p class="text-slate-500 mt-2 text-sm">Evaluate therapeutic advantage via RD Framework</p>
+      <div class="my-3 text-sm overflow-x-auto text-slate-600">
+        $$ \frac{(\alpha/\beta)_T \cdot (1 - r_T)}{(\alpha/\beta)_N \cdot (1 - r_N)} \le 1 $$
+      </div>
+    </div>
+
+    <div id="rationale-error-container" class="space-y-1 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 font-medium hidden"></div>
+
+    <div class="space-y-4">
+      <div class="p-4 bg-red-50 border border-red-100 rounded-lg">
+        <h2 class="text-sm font-semibold text-red-800 mb-3 border-b border-red-200 pb-1">Tumor Tissue (T)</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">\(\alpha/\beta\)_T (Gy)</label>
+            <input type="number" id="ab-t" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">\(D_q\)_T (Gy)</label>
+            <input type="number" id="dq-t" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 text-sm">
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+        <h2 class="text-sm font-semibold text-blue-800 mb-3 border-b border-blue-200 pb-1">Normal Tissue (N)</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">\(\alpha/\beta\)_N (Gy)</label>
+            <input type="number" id="ab-n" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">\(D_q\)_N (Gy)</label>
+            <input type="number" id="dq-n" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="evaluate-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 shadow-lg transition-transform transform active:scale-95">
+      Evaluate Strategy
+    </button>
+
+    <div id="rationale-result-container" class="hidden fade-in mt-6">
+      <div id="decision-box" class="border rounded-xl p-5 text-center">
+        <h3 class="text-xs uppercase tracking-wide font-bold mb-1 opacity-75" id="decision-label">Recommendation</h3>
+        <div id="decision-text" class="text-xl font-bold"></div>
+      </div>
+
+      <details class="mt-4 border border-slate-200 rounded-lg">
+        <summary class="text-xs text-slate-500 p-2 hover:bg-slate-50 font-medium cursor-pointer">Show Derived Parameters</summary>
+        <div class="text-xs text-slate-600 bg-slate-50 p-3 rounded-b-lg space-y-2 border-t border-slate-200">
+          <div class="grid grid-cols-2 gap-2">
+            <div>Tumor Resilience (\(r_T\)):</div>
+            <div id="val-rt" class="font-mono text-right"></div>
+            
+            <div>Normal Resilience (\(r_N\)):</div>
+            <div id="val-rn" class="font-mono text-right"></div>
+            
+            <div class="border-t border-slate-200 pt-1 mt-1">Therapeutic Ratio (\(\rho\)):</div>
+            <div id="val-ratio" class="font-mono text-right border-t border-slate-200 pt-1 mt-1"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    </div>
+
+  <script src="./datasrc.js"></script>
+  <script src="./hypoRationale.js"></script>
+</body>
+</html>
