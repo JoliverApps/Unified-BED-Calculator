@@ -13,15 +13,15 @@
 
 window.RD_DATA = {
 
-  "NSCLC (average by Park et al)": {
-    alpha_by_beta: 8.604798, 
-    D_q: 1.8,
-    D0: 1.25,
-    desc: "NCI-H460 Non-Small Cell Lung Cancer. Parameters explicitly used to derive and validate the Universal Survival Curve (USC) model.",
-    source: "Park, C., Papiez, L., Zhang, S., Story, M., & Timmerman, R. D. (2008). Int J Radiat Oncol Biol Phys, 70(3).",
-    url: "https://doi.org/10.1016/J.IJROBP.2007.10.059",
-    verified: true
-  },
+"NSCLC (Clinical standardization)": {
+  alpha_by_beta: 10.0,
+  D_q: 1.8,
+  D0: 1.25,
+  desc: "NSCLC clinical back-projection benchmark. Uses a standardized low-dose α/β = 10 Gy (clinical/Fe-plot convention) and tail descriptors D0 = 1.25 Gy, Dq = 1.8 Gy taken from Park et al. for high-dose behavior.",
+  source: "α/β standardization: clinical convention; D0 and Dq: Park, C., et al. (2008). Int J Radiat Oncol Biol Phys, 70(3).",
+  url: "https://doi.org/10.1016/J.IJROBP.2007.10.059",
+  verified: true
+},
 
   "CHO-K1 (Original paper)": {
     alpha_by_beta: 0.984594,
@@ -41,38 +41,6 @@ window.RD_DATA = {
     source: "Oliveira, JM (Original Paper)",
     url: "",
     verified: true
-  },
-
-  /* UNVERIFIED----------------------------------------------------*/
-  
-  "Rhabdomyosarcoma (Pediatric)": {
-    alpha_by_beta: 9.022222,
-    D_q: 9.2,
-    D0: 3.2,
-    desc: "Pediatric Rhabdomyosarcoma cell line. Shows extreme radioresistance with a massive shoulder.",
-    source: "Al-Shaick, H., Al-Bairmani, S., & Al-Jawad, F. (2015). Radiation Survival Curve for Pediatric Rhabdomyosarcoma Cells.",
-    url: "https://www.irpa.net/members/P01.33a.pdf",
-    verified: false /*This source and data is verifiable. The datapoints in the sample however, do not indicate that a proper tail was achieved to conclude in the values of D_0, but specialy D_q */
-  },
-
-  "Glioblastoma (U87MG - Stem-Like)": {
-    alpha_by_beta: 14.000000,
-    D_q: 37.980816,
-    D0: 1.40,
-    desc: "U87MG Glioblastoma Stem-Like Cells (CD133+). Shows distinct radioresistance.",
-    source: "Marmolejo-León, P., et al. (2018). Applied Radiation and Isotopes, 135.",
-    url: "https://doi.org/10.1016/j.apradiso.2018.01.011",
-    verified: false
-  },
-
-  "V79 (Chinese Hamster) - Standard": {
-    alpha_by_beta: 9.000000,
-    D_q: 7.832050,
-    D0: 1.61,
-    desc: "V79 Chinese Hamster lung fibroblasts. Historical standard reference.",
-    source: "Hall, E. J., & Giaccia, A. J. (2012). Radiobiology for the Radiologist.",
-    url: "https://books.google.com/books?id=QruDQAAQBAJ",
-    verified: false
   }
-
+  
 };
