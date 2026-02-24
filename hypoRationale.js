@@ -1,8 +1,12 @@
 /**
  * Hypofractionation Rationale Logic (hypoRationale.js)
  * --------------------------------------------------
- * Reactive architecture: Auto-evaluates therapeutic advantage 
- * based on the RD framework (Eq. 33) instantly upon valid input.
+ * Reactive: evaluates Eq. (hypo_condition) as soon as inputs form a valid state.
+ *
+ * Conventions (must match bedCalc.js):
+ *  - True low-dose LQ ratio: (alpha/beta) = 2(1-r)/(r s)
+ *  - Tail intercept: D_q = r/s
+ *  => r(ab, D_q) = (sqrt(D_q^2 + 2 D_q ab) - D_q)/ab
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,13 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const resContainer = document.getElementById('rationale-result-container');
   const decBox = document.getElementById('decision-box');
   const decText = document.getElementById('decision-text');
-  
+
   const inputsRationale = {
     abT: document.getElementById('ab-t'),
     dqT: document.getElementById('dq-t'),
     abN: document.getElementById('ab-n'),
     dqN: document.getElementById('dq-n')
   };
+
+  const EPS = 1e-12;
+  const ONE_R_EPS = 1e-9;
 
   function showError(msg) {
     errBox.textContent = msg;
@@ -36,74 +43,85 @@ document.addEventListener('DOMContentLoaded', () => {
     return Number.isFinite(x) ? x : NaN;
   }
 
-  // Translates classical LQ/SHMT parameters to RD resilience (r)
-  function calculateR(ab, dq) {
-    if (Math.abs(ab) < 1e-12) return NaN;
-    const termInside = (dq * dq) + (dq * ab);
-    if (termInside < 0) return NaN; // Prevents complex roots
-    return 2 * ((Math.sqrt(termInside) - dq) / ab);
+  // RD mapping consistent with current manuscript convention:
+  // r = (sqrt(Dq^2 + 2 Dq ab) - Dq)/ab
+  function rFromAbDq(ab, dq) {
+    if (!Number.isFinite(ab) || !Number.isFinite(dq)) return NaN;
+    if (Math.abs(ab) < EPS) return NaN;
+
+    const rad = (dq * dq) + (2 * dq * ab);
+    if (!Number.isFinite(rad) || rad < 0) return NaN;
+
+    const r = (Math.sqrt(rad) - dq) / ab;
+    return Number.isFinite(r) ? r : NaN;
   }
 
-  // --- Real-time Reactive Engine ---
+  function resetDecisionBox() {
+    decBox.className = "border-2 rounded-xl p-6 text-center shadow-sm transition-all duration-300";
+  }
+
   function tryEvaluateStrategy() {
-    // 1. Parse inputs
     const abT = toNum(inputsRationale.abT.value);
     const dqT = toNum(inputsRationale.dqT.value);
     const abN = toNum(inputsRationale.abN.value);
     const dqN = toNum(inputsRationale.dqN.value);
 
-    // 2. Quietly abort if not all inputs are filled yet
-    if ([abT, dqT, abN, dqN].some(v => isNaN(v))) {
+    // Quietly abort until all four are present
+    if ([abT, dqT, abN, dqN].some(v => !Number.isFinite(v))) {
       hideResultsAndErrors();
       return;
     }
 
-    // 3. Map to RD parameters
-    const rT = calculateR(abT, dqT);
-    const rN = calculateR(abN, dqN);
-
-    if (isNaN(rT) || isNaN(rN)) {
-      showError("Complex root detected. Check parameter consistency (Dq and α/β mismatch).");
+    // Basic sanity: Eq. (hypo_condition) uses ab ratios; if abN is ~0, it explodes.
+    if (Math.abs(abN) < EPS) {
+      showError("Normal-tissue α/β is too close to zero; the ratio is ill-defined.");
       return;
     }
 
-    // 4. Evaluate Eq. 33 Condition
+    const rT = rFromAbDq(abT, dqT);
+    const rN = rFromAbDq(abN, dqN);
+
+    if (!Number.isFinite(rT) || !Number.isFinite(rN)) {
+      showError("Incompatible inputs: r(ab, Dq) became complex/undefined. Check α/β and Dq consistency.");
+      return;
+    }
+
+    // Guard the singular normalization in Eq. (hypo_condition): (1 - r) appears explicitly
+    if ((1 - rT) <= ONE_R_EPS || (1 - rN) <= ONE_R_EPS) {
+      showError("Singularity detected: r ≈ 1 for tumor or normal tissue (1−r ≈ 0).");
+      return;
+    }
+
+    // Evaluate Eq. (hypo_condition):  (ab_T (1-r_T)) / (ab_N (1-r_N)) <= 1
     const numerator = abT * (1 - rT);
     const denominator = abN * (1 - rN);
 
-    if (Math.abs(denominator) < 1e-12) {
-      showError("Division by zero in ratio calculation. Normal tissue parameters yield r ≈ 1.");
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || Math.abs(denominator) < EPS) {
+      showError("Numerical failure in ratio evaluation (denominator ~ 0).");
       return;
     }
 
-    // Clear any previous errors if we made it here
-    errBox.classList.add('hidden');
-
     const ratio = numerator / denominator;
 
-    // 5. Update UI with derived parameters
+    // Update UI
+    errBox.classList.add('hidden');
     document.getElementById('val-rt').textContent = rT.toFixed(4);
     document.getElementById('val-rn').textContent = rN.toFixed(4);
     document.getElementById('val-ratio').textContent = ratio.toFixed(4);
 
-    // 6. Render Decision
-    decBox.className = "border-2 rounded-xl p-6 text-center shadow-sm transition-all duration-300";
-    
+    resetDecisionBox();
+
     if (ratio <= 1.0) {
-      // Hypofractionation favored
       decBox.classList.add("bg-green-50", "border-green-400", "text-green-800");
       decText.textContent = "Hypofractionation is Preferable";
     } else {
-      // Conventional favored
       decBox.classList.add("bg-orange-50", "border-orange-400", "text-orange-800");
       decText.textContent = "Conventional is Preferable";
     }
 
-    // Show the results container
     resContainer.classList.remove('hidden');
   }
 
-  // Attach event listeners to all inputs
   Object.values(inputsRationale).forEach(inputEl => {
     inputEl.addEventListener('input', tryEvaluateStrategy);
   });
