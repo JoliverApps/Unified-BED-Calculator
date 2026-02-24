@@ -182,44 +182,50 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Parameter Mappings ---
-  function convertClassicalToRD() {
-    if (suppress) return;
-    const AB = toNum(inputs.ab.value);
-    const DQ = toNum(inputs.dq.value);
+function convertClassicalToRD() {
+  if (suppress) return;
 
-    if (!Number.isFinite(AB) || !Number.isFinite(DQ) || Math.abs(AB) < 1e-12 || Math.abs(DQ) < 1e-12) return;
+  const AB = toNum(inputs.ab.value);   // low-dose (α/β) to be shared with LQ and RD
+  const DQ = toNum(inputs.dq.value);   // tail intercept Dq = r/s
 
-    const termInside = (DQ * DQ) + (DQ * AB); 
-    if (termInside < 0) {
-      addError("Complex root detected (Dq, α/β mismatch).", [inputs.ab, inputs.dq]);
-      return;
-    }
+  if (!Number.isFinite(AB) || !Number.isFinite(DQ) || Math.abs(AB) < 1e-12 || Math.abs(DQ) < 1e-12) return;
 
-    const r = 2 * ((Math.sqrt(termInside) - DQ) / AB);
-    const s = r / DQ;
-
-    suppress = true;
-    inputs.r.value = r.toFixed(6);
-    inputs.s.value = s.toFixed(6);
-    suppress = false;
+  // From AB = 2(1-r)/(r s) and DQ = r/s => AB = 2*DQ*(1-r)/r^2
+  // => AB r^2 + 2 DQ r - 2 DQ = 0  (quadratic in r)
+  const disc = (DQ * DQ) + (2 * DQ * AB);
+  if (disc < 0) {
+    addError("Complex root detected (Dq, α/β mismatch).", [inputs.ab, inputs.dq]);
+    return;
   }
-  
-  function convertRDToClassical() {
-    if (suppress) return;
-    const r = toNum(inputs.r.value);
-    const s = toNum(inputs.s.value);
 
-    if (!Number.isFinite(r) || !Number.isFinite(s) || Math.abs(s) < 1e-12 || Math.abs(r) < 1e-12) return;
+  // Positive physical branch (continuous RD convention)
+  const r = (Math.sqrt(disc) - DQ) / AB;
+  const s = r / DQ;
 
-    const DQ = r / s;
-    const AB = (4 * (1 - r)) / (r * s);
+  suppress = true;
+  inputs.r.value = r.toFixed(6);
+  inputs.s.value = s.toFixed(6);
+  suppress = false;
+}
 
-    suppress = true;
-    inputs.dq.value = DQ.toFixed(6);
-    inputs.ab.value = Number.isFinite(AB) ? AB.toFixed(6) : '';
-    suppress = false;
-  }
-  
+function convertRDToClassical() {
+  if (suppress) return;
+
+  const r = toNum(inputs.r.value);
+  const s = toNum(inputs.s.value);
+
+  if (!Number.isFinite(r) || !Number.isFinite(s) || Math.abs(s) < 1e-12 || Math.abs(r) < 1e-12) return;
+
+  const DQ = r / s;
+  // UPDATED: continuous RD/LQ low-dose ratio (no USC factor-of-two)
+  const AB = (2 * (1 - r)) / (r * s);
+
+  suppress = true;
+  inputs.dq.value = DQ.toFixed(6);
+  inputs.ab.value = Number.isFinite(AB) ? AB.toFixed(6) : '';
+  suppress = false;
+}
+
   // --- UI Mode Switching ---
   function updateModeUI() {
     const classicalInputs = [inputs.ab, inputs.dq];
