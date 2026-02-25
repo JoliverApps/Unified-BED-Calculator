@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- State ---
-  let currentMode = 'classical'; 
+  let currentMode = 'rd'; 
   let suppress = false;
 
   // --- Numeric Tolerances ---
@@ -282,6 +282,10 @@ function convertRDToClassical() {
     });
   }
 
+
+
+
+
   cellSelect.addEventListener('change', () => {
     hideResults();
     clearErrorsAndInvalid();
@@ -298,7 +302,6 @@ function convertRDToClassical() {
     suppress = true;
     inputs.ab.value = data.alpha_by_beta ?? '';
     inputs.dq.value = data.D_q ?? '';
-    if(currentMode !== 'classical') setMode('classical');
     
     suppress = false;
     convertClassicalToRD();
