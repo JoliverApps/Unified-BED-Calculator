@@ -13,7 +13,7 @@
 
 window.RD_DATA = {
 
-"NSCLC (Clinical standardization)": {
+"NSCLC (Original paper)": {
   alpha_by_beta: 10.0,
   D_q: 1.8,
   D0: 1.25,
