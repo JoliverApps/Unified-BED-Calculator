@@ -54,8 +54,8 @@
         <div class="flex items-center justify-between border-b border-slate-200 pb-2">
           <h2 class="text-sm font-bold text-slate-700">1. Tissue Parameters</h2>
           <div class="flex bg-slate-200 rounded p-1 text-xs font-medium">
-            <button id="mode-classical" class="px-2 py-1 rounded transition-all shadow-sm bg-white text-slate-800">Classical</button>
-            <button id="mode-rd" class="px-2 py-1 rounded transition-all text-slate-500 hover:text-slate-700">RD Params</button>
+            <button id="mode-rd" class="px-2 py-1 rounded transition-all shadow-sm bg-white text-slate-800">RD Params</button>
+            <button id="mode-classical" class="px-2 py-1 rounded transition-all text-slate-500 hover:text-slate-700">Classical</button>
           </div>
         </div>
 
@@ -71,17 +71,6 @@
           </div>
         </div>
 
-        <div id="group-classical" class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">\(\alpha/\beta\) (Gy)</label>
-            <input type="number" id="param-ab" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">\(D_q\) (Gy)</label>
-            <input type="number" id="param-dq" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-        </div>
-
         <div id="group-rd" class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Initial resilience \(r\)</label>
@@ -92,6 +81,18 @@
             <input type="number" id="param-s" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
         </div>
+
+        <div id="group-classical" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">\(\alpha/\beta\) (Gy)</label>
+            <input type="number" id="param-ab" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">\(D_q\) (Gy)</label>
+            <input type="number" id="param-dq" step="any" class="w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+        
         <div id="error-container" class="text-xs text-red-600 font-medium hidden"></div>
       </div>
 
@@ -187,7 +188,3 @@
   <script src="./bedCalc.js"></script>
 </body>
 </html>
-
-
-
-
