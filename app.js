@@ -176,8 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (shouldValidate(inputs.s)) {
       if (!Number.isFinite(s)) addError("s is invalid.", [inputs.s]);
-      // Allow negative s only if you explicitly intend it; otherwise disallow:
-      // if (Number.isFinite(s) && s <= 0) addError("s must be > 0.", [inputs.s]);
     }
 
     // Schedule
@@ -197,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return !btnCalc.disabled;
   }
 
-// --- Conversion Classical (AB, Dq) -> RD (r, s) ---
+  // --- Conversion Classical (AB, Dq) -> RD (r, s) ---
   function convertClassicalToRD() {
     if (suppress) return;
 
@@ -207,16 +205,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!Number.isFinite(AB) || !Number.isFinite(DQ)) return;
     if (Math.abs(AB) < 1e-12 || Math.abs(DQ) < 1e-12) return;
 
-    // r = 2 * [ (sqrt(Dq^2 + Dq(α/β)) - Dq) / (α/β) ]
-    const termInside = (DQ * DQ) + (DQ * AB); 
-    
+    const termInside = (DQ * DQ) + (2 * DQ * AB); 
     if (termInside < 0) {
       addError("Complex root detected (Dq, α/β mismatch).", [inputs.ab, inputs.dq]);
       return;
     }
 
-    const r = 2 * ((Math.sqrt(termInside) - DQ) / AB);
+    const root = Math.sqrt(termInside);
+    let r;
+    
+    // Dual-branch evaluation prevents catastrophic cancellation across all topologies
+    if (DQ >= 0) {
+      // Standard topologies: prevents cancellation when AB is very small
+      r = (2 * DQ) / (root + DQ); 
+    } else {
+      // Inverse-shoulder topologies: naturally stable additive operation
+      r = (root - DQ) / AB;
+    }
+    
     const s = r / DQ;
+
+    if (!Number.isFinite(r) || !Number.isFinite(s)) {
+      addError("Parameter conversion failed (non-finite r or s).", [inputs.ab, inputs.dq]);
+      return;
+    }
 
     suppress = true;
     inputs.r.value = r.toFixed(6);
@@ -225,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     validateAll(false, false);
   }
-  
+
   // --- Conversion RD (r, s) -> Classical (AB, Dq) ---
   function convertRDToClassical() {
     if (suppress) return;
@@ -236,20 +248,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!Number.isFinite(r) || !Number.isFinite(s)) return;
     if (Math.abs(s) < 1e-12 || Math.abs(r) < 1e-12) return;
 
-    // Dq = r/s 
-    // α/β (clinic) = 4 * (1-r)/(r s)
-    // (This is 2x the internal RD ratio, so the numerator factor becomes 4)
     const DQ = r / s;
-    const AB = (4 * (1 - r)) / (r * s);
+    const AB = (2 * (1 - r)) / (r * s);
+
+    if (!Number.isFinite(DQ) || !Number.isFinite(AB)) {
+      addError("Parameter conversion failed (non-finite α/β or Dq).", [inputs.r, inputs.s]);
+      return;
+    }
 
     suppress = true;
     inputs.dq.value = DQ.toFixed(6);
-    inputs.ab.value = Number.isFinite(AB) ? AB.toFixed(6) : '';
+    inputs.ab.value = AB.toFixed(6);
     suppress = false;
 
     validateAll(false, false);
   }
-  
+
   // --- UI Mode Switching ---
   function updateModeUI() {
     const classicalInputs = [inputs.ab, inputs.dq];
