@@ -182,6 +182,16 @@ document.addEventListener('DOMContentLoaded', () => {
     refEqd2TotalText.textContent = '--';
   }
 
+  function hasCompleteRequiredInputs() {
+    const modeInputs = currentMode === 'classical'
+      ? [inputs.ab, inputs.dq]
+      : [inputs.r, inputs.s];
+
+    const required = [...modeInputs, inputs.d1, inputs.n1, inputs.n2];
+
+    return required.every(el => el && typeof el.value === 'string' && el.value.trim() !== '');
+  }
+
   // --- Validation ---
   function validateAll(strict = false, validateSchedule = false) {
     clearErrorsAndInvalid();
@@ -333,13 +343,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // s = 0 is a valid RD limit for BED, but Dq = r/s is not representable.
     if (Math.abs(s) < S_EPS) {
       clearClassicalFields();
       return;
     }
 
-    // r = 0 makes α/β diverge in the exact mapping; leave classical blank.
     if (Math.abs(r) < ZERO_EPS) {
       clearClassicalFields();
       return;
@@ -396,6 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
     validateAll(false, false);
     updateModeUI();
     updateReferenceDerived();
+    attemptAutoCalculate();
   }
 
   btnModeClassical.addEventListener('click', () => setMode('classical'));
@@ -486,6 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateModeUI();
     updateDpf();
     updateReferenceDerived();
+    attemptAutoCalculate();
   });
 
   // --- BED / EQD2 ---
@@ -496,7 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (one_r <= ONE_R_EPS) return NaN;
     if (!Number.isFinite(r) || !Number.isFinite(s) || s < 0) return NaN;
 
-    // Regular limit s -> 0
     if (Math.abs(s) < S_EPS) return D;
 
     const x = -s * (D / n);
@@ -613,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Result UI ---
-  function updateResultUI(BED_val, D2_val, n2_val, K_val, W_val) {
+  function updateResultUI(BED_val, D2_val, n2_val, K_val, W_val, scrollToResults = false) {
     const d2_val = D2_val / n2_val;
 
     bedText.textContent = `${fmt(BED_val, 2)} Gy`;
@@ -625,15 +634,18 @@ document.addEventListener('DOMContentLoaded', () => {
     dbgW.textContent = Number.isFinite(W_val) ? fmt(W_val, 6) : '—';
 
     showResultPanel();
-    resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    if (scrollToResults) {
+      resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 
   // --- Main Calculation ---
-  btnCalc.addEventListener('click', () => {
+  function runCalculation({ scrollToResults = false } = {}) {
     showEmptyResults();
     clearErrorsAndInvalid();
 
-    if (!validateAll(true, true)) return;
+    if (!validateAll(true, true)) return false;
 
     const r = toNum(inputs.r.value);
     const s = toNum(inputs.s.value);
@@ -641,39 +653,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const n1 = toNum(inputs.n1.value);
     const n2 = toNum(inputs.n2.value);
 
-    if (!needFinite('r', r, [inputs.r])) return;
-    if (!needFinite('s', s, [inputs.s])) return;
-    if (!needFinite('D1', D1, [inputs.d1])) return;
-    if (!needFinite('n1', n1, [inputs.n1])) return;
-    if (!needFinite('n2', n2, [inputs.n2])) return;
+    if (!needFinite('r', r, [inputs.r])) return false;
+    if (!needFinite('s', s, [inputs.s])) return false;
+    if (!needFinite('D1', D1, [inputs.d1])) return false;
+    if (!needFinite('n1', n1, [inputs.n1])) return false;
+    if (!needFinite('n2', n2, [inputs.n2])) return false;
 
     if ((1 - r) <= ONE_R_EPS) {
       addError('Calculation singularity (r ≈ 1).', [inputs.r]);
-      return;
+      return false;
     }
 
     if (s < 0) {
       addError('s must satisfy s ≥ 0.', [inputs.s]);
-      return;
+      return false;
     }
 
     const BED1 = bedUnified(D1, n1, r, s);
     if (!Number.isFinite(BED1)) {
       addError('BED computation failed (check parameters).', [inputs.r, inputs.s]);
-      return;
+      return false;
     }
 
-    // Regular limit s -> 0: BED = D, so isoeffect gives D2 = BED1 = D1.
     if (Math.abs(s) < S_EPS) {
       const D2_limit = BED1;
 
       if (!(Number.isFinite(D2_limit) && D2_limit > 0)) {
         addError('Computed D2 is non-physical in the s → 0 limit.', []);
-        return;
+        return false;
       }
 
-      updateResultUI(BED1, D2_limit, n2, null, null);
-      return;
+      updateResultUI(BED1, D2_limit, n2, null, null, scrollToResults);
+      return true;
     }
 
     const one_r = 1 - r;
@@ -682,7 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const eNegK = expSafe(-K);
     if (!Number.isFinite(eNegK)) {
       addError('Numeric overflow in exp(-K). Please check inputs.', []);
-      return;
+      return false;
     }
 
     const arg = -r * eNegK;
@@ -690,29 +701,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!Number.isFinite(w_val)) {
       addError('Lambert-W failure: parameters out of domain or no real principal-branch solution.', [inputs.r, inputs.s]);
-      return;
+      return false;
     }
 
     const D2 = (n2 / s) * (K + w_val);
 
     if (!(Number.isFinite(D2) && D2 > 0)) {
       addError('Computed D2 is non-physical (negative, zero, or infinite).', []);
+      return false;
+    }
+
+    updateResultUI(BED1, D2, n2, K, w_val, scrollToResults);
+    return true;
+  }
+
+  function attemptAutoCalculate() {
+    if (!hasCompleteRequiredInputs()) {
+      showEmptyResults();
       return;
     }
 
-    updateResultUI(BED1, D2, n2, K, w_val);
+    runCalculation({ scrollToResults: false });
+  }
+
+  btnCalc.addEventListener('click', () => {
+    runCalculation({ scrollToResults: true });
   });
 
   // --- Input Behavior ---
   function attachInputBehavior(el, onChange, detachPreset = false) {
     el.addEventListener('input', () => {
-      showEmptyResults();
       if (detachPreset) breakPresetAndDetach();
 
       onChange();
       updateReferenceDerived();
 
       if (errorContainer.innerHTML !== '') validateAll(false, false);
+
+      attemptAutoCalculate();
     });
 
     el.addEventListener('keydown', (e) => {
