@@ -28,8 +28,8 @@ window.RD_DATA = {
     D_q: 3.917012,
     D0: 1.100110,
     desc: "From Oliveira, JM original paper. Demonstrates high-shoulder behavior with low alpha/beta ratio.",
-    source: "Oliveira, JM (Original Paper)",
-    url: "",
+    source: "Oliveira, JM",
+    url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
     verified: true
   },
 
@@ -38,8 +38,8 @@ window.RD_DATA = {
     D_q: -1.034257,
     D0: 1.461988,
     desc: "From Oliveira, JM original paper. Represents a repair-deficient phenotype with negative shoulder displacement.",
-    source: "Oliveira, JM (Original Paper)",
-    url: "",
+    source: "Oliveira, JM",
+    url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
     verified: true
   }
   
