@@ -13,34 +13,23 @@
 
 window.RD_DATA = {
 
-"NSCLC (Original paper)": {
+"NSCLC (α/β=10, Dq=1.8, Oliveira, 2026)": {
   alpha_by_beta: 10.0,
   D_q: 1.8,
   D0: 1.25,
-  desc: "NSCLC clinical back-projection benchmark. Uses a standardized low-dose α/β = 10 Gy (clinical/Fe-plot convention) and tail descriptors D0 = 1.25 Gy, Dq = 1.8 Gy taken from Park et al. for high-dose behavior.",
-  source: "α/β standardization: clinical convention; D0 and Dq: Park, C., et al. (2008). Int J Radiat Oncol Biol Phys, 70(3).",
-  url: "https://doi.org/10.1016/J.IJROBP.2007.10.059",
+  desc: "From the original resilience depletion paper. Uses a standardized low-dose α/β = 10 Gy (clinical/Fe-plot convention) and tail descriptors D0 = 1.25 Gy, Dq = 1.8 Gy taken from Park et al. (2008) for high-dose behavior.",
+  source: "Oliveira JM. Resilience–depletion hypothesis: Unifying BED from conventional to ablative radiotherapy. Med Phys. 2026; 53:e70490. https://doi.org/10.1002/mp.70490",
+  url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
   verified: true
 },
-
-  "CHO-K1 (Original paper)": {
-    alpha_by_beta: 0.984594,
-    D_q: 3.917012,
-    D0: 1.100110,
-    desc: "From Oliveira, JM original paper. Demonstrates high-shoulder behavior with low alpha/beta ratio.",
-    source: "Oliveira, JM",
-    url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
-    verified: true
-  },
-
-  "XRS6 (Original paper)": {
-    alpha_by_beta: -4.970032,
-    D_q: -1.034257,
-    D0: 1.461988,
-    desc: "From Oliveira, JM original paper. Represents a repair-deficient phenotype with negative shoulder displacement.",
-    source: "Oliveira, JM",
-    url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
-    verified: true
-  }
+"Prostate (α/β=1.5, Dq=5.7306, Oliveira optimization)": {
+  alpha_by_beta: 1.5,
+  D_q: 5.7306,
+  D0: ,
+  desc: "Optimized from a set of clinically adopted treatment schedules ranging from 5 to 41 fractions.",
+  source: "",
+  url: "",
+  verified: true
+},
   
 };
