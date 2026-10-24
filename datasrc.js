@@ -24,7 +24,7 @@ window.RD_DATA = {
 },
 "Prostate (α/β=1.5, Dq=5.6075, Oliveira optimization)": {
   alpha_by_beta: 1.5,
-  D_q: 5.7306,
+  D_q: 5.6075,
   D0: 0,
   desc: "Optimized from a set of clinically adopted treatment schedules ranging from 5 to 41 fractions.",
   source: "",
