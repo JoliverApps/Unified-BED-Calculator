@@ -22,9 +22,9 @@ window.RD_DATA = {
   url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
   verified: true
 },
-"Prostate (α/β=1.5, Dq=3.2717, Eight prescriptions optimization)": {
+"Prostate (α/β=1.5, Dq=3.3027, Eight prescriptions optimization)": {
   alpha_by_beta: 1.5,
-  D_q: 3.2717,
+  D_q: 3.3027,
   D0: 0,
   desc: "Optimized from a set of clinically adopted treatment schedules ranging from 5 to 41 fractions.",
   source: "",
