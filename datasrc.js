@@ -22,7 +22,7 @@ window.RD_DATA = {
   url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
   verified: true
 },
-"Prostate (α/β=1.5, Dq=3.5439, Seven prescriptions optimization)": {
+"Prostate (α/β=1.5, Dq=3.5439, Eight prescriptions optimization)": {
   alpha_by_beta: 1.5,
   D_q: 3.5439,
   D0: 0,
