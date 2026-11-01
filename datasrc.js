@@ -29,7 +29,7 @@ window.RD_DATA = {
     desc: "Optimized from 13 prescriptions spanning 2.0 to 22.0 Gy per fraction. With α/β = 10 Gy fixed, the results are: optimal Dq = 0.1418 Gy; mean EQD2 = 59.22 Gy; SD = 7.60 Gy; 95% CI for mean EQD2 = 54.63–63.81 Gy; RSD = 12.84%; η = 0.450%.",
     source: "",
     url: "",
-    verified: False
+    verified: false
   },
 
   "Prostate (α/β=1.5 Gy, Dq=3.5439 Gy; 8 prescriptions)": {
