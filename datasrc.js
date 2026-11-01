@@ -12,7 +12,7 @@
  */
 
 window.RD_DATA = {
-  "NSCLC (α/β=10 Gy, Dq=0.1418 Gy; optimized from 13 prescriptions)": {
+  "NSCLC (α/β=10 Gy, Dq=0.1418 Gy; 13 prescriptions)": {
     alpha_by_beta: 10.0,
     D_q: 0.14178559892984927,
     D0: 0,
@@ -22,7 +22,7 @@ window.RD_DATA = {
     verified: true
   },
 
-  "Prostate (α/β=1.5 Gy, Dq=3.5439 Gy; optimized from 8 prescriptions)": {
+  "Prostate (α/β=1.5 Gy, Dq=3.5439 Gy; 8 prescriptions)": {
     alpha_by_beta: 1.5,
     D_q: 3.5438593425390432,
     D0: 0,
