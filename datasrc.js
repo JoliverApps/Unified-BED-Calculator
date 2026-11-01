@@ -14,7 +14,7 @@
 window.RD_DATA = {
   "NSCLC (α/β=10 Gy, Dq=0.1418 Gy; 13 prescriptions)": {
     alpha_by_beta: 10.0,
-    D_q: 0.14178559892984927,
+    D_q: 0.1418,
     D0: 0,
     desc: "Optimized from 13 prescriptions spanning 2.0 to 22.0 Gy per fraction. With α/β = 10 Gy fixed, the results are: optimal Dq = 0.1418 Gy; mean EQD2 = 59.22 Gy; SD = 7.60 Gy; 95% CI for mean EQD2 = 54.63–63.81 Gy; RSD = 12.84%; η = 0.450%.",
     source: "",
@@ -24,7 +24,7 @@ window.RD_DATA = {
 
   "Prostate (α/β=1.5 Gy, Dq=3.5439 Gy; 8 prescriptions)": {
     alpha_by_beta: 1.5,
-    D_q: 3.5438593425390432,
+    D_q: 3.5439,
     D0: 0,
     desc: "Optimized from 8 prescriptions spanning 1.8 to 9.5 Gy per fraction. With α/β = 1.5 Gy fixed, the results are: optimal Dq = 3.5439 Gy; mean EQD2 = 75.82 Gy; SD = 2.15 Gy; 95% CI for mean EQD2 = 74.02–77.62 Gy; RSD = 2.84%; η = 0.117%.",
     source: "",
