@@ -12,6 +12,16 @@
  */
 
 window.RD_DATA = {
+  "NSCLC (α/β=10, Dq=1.8, Oliveira, 2026)": {
+    alpha_by_beta: 10.0,
+    D_q: 1.8,
+    D0: 1.25,
+    desc: "From the original resilience depletion paper. Uses a standardized low-dose α/β = 10 Gy (clinical/Fe-plot convention) and tail descriptors D0 = 1.25 Gy, Dq = 1.8 Gy taken from Park et al. (2008) for high-dose behavior.",
+    source: "Oliveira JM. Resilience–depletion hypothesis: Unifying BED from conventional to ablative radiotherapy. Med Phys. 2026; 53:e70490. https://doi.org/10.1002/mp.70490",
+    url: "https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.70490",
+    verified: true
+},
+  
   "NSCLC (α/β=10 Gy, Dq=0.1418 Gy; 13 prescriptions)": {
     alpha_by_beta: 10.0,
     D_q: 0.1418,
@@ -19,7 +29,7 @@ window.RD_DATA = {
     desc: "Optimized from 13 prescriptions spanning 2.0 to 22.0 Gy per fraction. With α/β = 10 Gy fixed, the results are: optimal Dq = 0.1418 Gy; mean EQD2 = 59.22 Gy; SD = 7.60 Gy; 95% CI for mean EQD2 = 54.63–63.81 Gy; RSD = 12.84%; η = 0.450%.",
     source: "",
     url: "",
-    verified: true
+    verified: False
   },
 
   "Prostate (α/β=1.5 Gy, Dq=3.5439 Gy; 8 prescriptions)": {
