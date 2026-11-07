@@ -1,14 +1,14 @@
 /**
- * Unified BED Calculator - Data Source (datasrc.js)
- * -------------------------------------------------
- * VERIFIED DATASETS for RD Framework Demonstration
+ * Unified BED Calculator parameter presets.
  *
  * PARAMETER KEY:
- * - alpha_by_beta (Gy) : Standard LQ ratio.
- * - D_q           (Gy) : Shoulder displacement (High-dose tail intercept).
- * - D0            (Gy) : Mean lethal dose (High-dose tail slope inverse).
+ * - alpha_by_beta (Gy): Strict low-dose alpha/beta ratio.
+ * - D_q (Gy): Dose-axis intercept of the extrapolated high-dose tail.
+ * - desc, source, url: Preset description and reference.
+ * - verified: Whether the preset is available in the selection list.
  *
- * NOTE: The app calculates internal state (k, r, s) from these three values.
+ * The app reconstructs r and s from alpha_by_beta and D_q.
+ * D0 entries provide additional data; D0 and k are not used by the calculator.
  */
 
 window.RD_DATA = {
@@ -42,3 +42,4 @@ window.RD_DATA = {
     verified: true
   }
 };
+

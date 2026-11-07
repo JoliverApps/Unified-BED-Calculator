@@ -1,65 +1,98 @@
 # Unified BED Calculator
 
-Interactive web calculator for the **Unified Biologically Effective Dose (BED)** in the **Resilience–Depletion (RD)** framework, providing a closed-form isoeffect solution for radiotherapy fractionation comparisons.
+Unified BED Calculator calculates biologically effective dose (BED), equivalent dose in 2 Gy fractions (EQD2), and the total dose required for an isoeffective schedule with a specified number of fractions. It uses the therapeutic form of the Resilience–Depletion (RD) survival law.
 
-**Live Demo:** [https://joliverapps.github.io/Unified-BED-Calculator/](https://joliverapps.github.io/Unified-BED-Calculator/)
+[Open the calculator](https://joliverapps.github.io/Unified-BED-Calculator/).
 
----
+For research and educational use. The application has not been validated for clinical decision-making.
 
-> ⚠️ **Clinical Disclaimer**
->
-> This is a non-validated, non-approved research demonstration tool intended solely to illustrate the calculations presented in the associated manuscript. **It must not be used for clinical decision-making.** Use is entirely at the end-user’s risk.
+## Use the calculator
 
-## Overview
+1. Choose a parameter preset or enter tissue parameters manually.
+2. Select **Classical** to enter α/β and Dq, or **RD Params** to enter r and s.
+3. Enter the reference total dose **D₁** and number of fractions **n₁**.
+4. Enter the target number of fractions **n₂**.
+5. Read the reference BED and EQD2, then the target total dose **D₂**, dose per fraction, and BED. Results update when all required inputs are complete; **Calculate Equivalent Dose** also runs the calculation.
 
-This is a simple, static web application (HTML/JS/Tailwind CSS) that serves as the companion tool for the paper: *"Resilience-Depletion Hypothesis: Unifying Biological Effective Dose (BED) from conventional to hypofractionated radiotherapy"*.
+Use **Show Calculation Details** to view the reference BED, the inversion quantity K, and the Lambert-W value. Selecting a preset clears the schedule fields. Editing a tissue parameter clears the preset selection.
 
-*First-principles Resilience-Depletion (RD) model unifying BED from conventional to hypofractionated dose.*
+![Unified BED Calculator](uBED_app_v1.png)
 
-The standard Linear–Quadratic (LQ) model is widely used but can mischaracterize survival and isoeffect at the high dose-per-fraction regimes used in SBRT/SRS. This tool implements the **RD survival-derived BED** from the paper, based on the postulate of **proportional depletion of resilience**, yielding a **single BED definition** that remains well-behaved from conventional fractionation to extreme hypofractionation.
+## Parameters and units
 
-![Screenshot of the Unified BED Calculator](uBED_app_v1.png)
+| Input | Meaning | Units and allowed values |
+| --- | --- | --- |
+| r | Initial resilience, or effective resilience for an inverted response | Dimensionless; r < 1 |
+| s | Sensitization rate governing resilience depletion with dose | Gy⁻¹; s ≥ 0 |
+| α/β | Ratio of the strict low-dose linear and quadratic coefficients | Gy; finite and nonzero in Classical mode |
+| Dq | Dose-axis intercept of the extrapolated high-dose survival tail | Gy; finite and nonzero in Classical mode |
+| D₁ | Reference total dose | Gy; positive |
+| n₁, n₂ | Reference and target fraction counts | Positive integers |
 
-## The Model Implemented
+Each schedule consists of equal fractions, with dose per fraction d = D/n. Comparisons use the same tissue parameters and assume acute delivery of each fraction with restoration of resilience between fractions. The calculator does not include time-dependent recovery, repopulation, or dose-rate corrections.
 
-The calculation is based on the unified Biologically Effective Dose (BED) derived in the paper. Unlike the LQ model, this formulation describes the full dose-response curve, including the high-dose linear tail.
+The parameter choices describe three responses:
 
-The Unified BED equation is:
+| Response | RD inputs | Classical inputs |
+| --- | --- | --- |
+| Standard shoulder | 0 < r < 1 and s > 0 | Positive α/β and positive Dq |
+| Single-hit linear response | r = 0; also available through the s = 0 linear limit | Enter through RD Params |
+| Inverted shoulder | r < 0 and s > 0 | Negative α/β and negative Dq |
 
-$$
-\mathrm{BED}(D,n;r,s) = \frac{D}{1-r} - \frac{n r}{s(1-r)}\Bigl(1-e^{-s D/n}\Bigr)
-$$
+For an inverted shoulder, r is an effective descriptor of population response rather than an individual survival probability. Enter both signed Classical values explicitly. At a linear response, BED and EQD2 equal the physical dose, and the isoeffective target total dose equals D₁ for any target fraction count.
 
-Where:
-* $D$ is the total dose.
-* $n$ is the number of fractions.
-* $r$ is the **Initial Resilience** (probability of surviving the first strike).
-* $s$ is the **Sensitization Rate** (rate of resilience depletion).
+The killing-efficiency scale k cancels from these comparisons, so k and D₀ are not required inputs. Values too close to r = 1 are rejected because BED is normalized by α = k(1−r).
 
-To find an equivalent total dose $D_2$ for a new schedule of $n_2$ fractions, the tool solves the isoeffect equation $\mathrm{BED}(D_1, n_1) = \mathrm{BED}(D_2, n_2)$. It uses the exact, closed-form solution derived in the paper, which relies on the principal branch of the **Lambert-$W$ function**:
+## Results
 
-$$
-D_2 = \frac{n_2}{s}\Bigl(K+W_0\!\bigl(-r e^{-K}\bigr)\Bigr)
-$$
+| Result | Meaning |
+| --- | --- |
+| Reference BED | RD biological effect of the reference schedule, normalized by its initial hazard slope |
+| EQD2 | Total dose in 2 Gy fractions with the same RD effect |
+| EQD2 fraction count | EQD2 divided by 2 Gy; reported as a real number |
+| New total D₂ | Dose giving the reference BED in n₂ equal fractions |
+| Dose/Fx | D₂/n₂ |
+| BED Output | Biological effect shared by the reference and target schedules |
 
-This design choice is deliberate: many published datasets provide \(\alpha\), \(\beta\), and (historically) a terminal-slope scale such as \(D_0\). The calculator therefore preserves the paper’s operational mapping without requiring ad hoc reparameterizations.
+Doses and BED values are displayed to two decimal places. Calculation details are displayed to six decimal places. See [Mathematical model and calculations](MATHEMATICS.md) for the equations, signed parameter conversion, limiting cases, and numerical implementation.
 
-$$
-K \coloneqq r + \frac{s(1-r)}{n_2} \mathrm{BED}(D_1,n_1;r,s)
-$$
+## Run a local copy
 
-This approach provides a single, consistent method for comparing all fractionation schedules without the limitations of the LQ model. It is backward-compatible with LQ at low doses while correcting for high-dose overestimation.
+Clone the repository or download and extract its files:
 
-## Features
+```text
+git clone https://github.com/JoliverApps/Unified-BED-Calculator.git
+```
 
-* **Calculate Equivalent Dose:** Find the equivalent total dose ($D_2$) and new dose-per-fraction ($d_2$) for a target number of fractions ($n_2$).
-* **Closed-Form Solution:** Uses a direct, exact calculation via the Lambert-$W$ function (implemented in vanilla JavaScript with Halley's method for precision).
-* **Automatic Parameter Conversion:** Inputs can be standard LQ parameters ($\alpha, \beta, D_0$), which are automatically converted to the RD framework parameters ($r, s, k$).
-* **Robust Edge Case Handling:** Correctly handles the single-hit limit ($s \to 0$ or $\beta \to 0$) where the BED reduces to physical dose.
-* **Cell Line Presets:** Includes pre-filled parameters for cell lines analyzed in the paper (e.g., T-47D, A549, XRS5).
-* **Handles Heterogeneity:** The model allows for an **effective negative resilience ($r < 0$)**, correctly describing the biphasic survival curves of heterogeneous populations (e.g., XRS lines) often mischaracterized by standard models.
-* **Lightweight & Static:** Runs entirely in the browser. No server or build step required.
+Open `index.html` in a modern browser. The page loads styling, fonts, equation rendering, and preset data from online resources, so an internet connection is needed for the complete interface. The preset script is loaded from the hosted `datasrc.js` URL specified in `index.html`.
+
+For a local HTTP preview with Python installed, open a terminal in the repository folder and run:
+
+```text
+python -m http.server 8000 --bind 127.0.0.1
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Keep the terminal running and refresh the browser after saving edits. Press Ctrl+C in the terminal to stop the preview.
+
+In Visual Studio, open the cloned folder with **File → Open → Folder**. Use **Git → Pull** to download updates and **Git Changes → Commit**, followed by **Push**, to upload saved changes.
+
+## Troubleshooting
+
+| Problem | Action |
+| --- | --- |
+| A linear response cannot be entered in Classical mode | Select **RD Params** and enter r = 0 or s = 0. |
+| The Classical pair gives an invalid solution | Use α/β and Dq with the same sign and check that the converted r and s satisfy the displayed constraints. |
+| A singularity is reported near r = 1 | Check the entered parameters; the initial-slope BED normalization vanishes at r = 1. |
+| No parameter presets appear | Check the internet connection and the preset-script URL in `index.html`. |
+| Very small converted parameters become zero | Conversion fields retain six decimal places; use RD Params to enter small values directly. |
+| No result appears | Complete all required fields and resolve the validation message shown in the calculator. |
+
+## Reference and related tool
+
+Oliveira JM. Resilience–depletion hypothesis: Unifying BED from conventional to ablative radiotherapy. *Medical Physics*. 2026;53:e70490. [doi:10.1002/mp.70490](https://doi.org/10.1002/mp.70490).
+
+[RD EQD2 Optimizer](https://github.com/JoliverApps/RD_Dq_Optimizer) estimates Dq by minimizing the dispersion of RD-derived EQD2 across a selected prescriptions set.
 
 ## License
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+The application code is distributed under the [MIT License](LICENSE).
