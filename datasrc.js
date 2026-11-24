@@ -36,9 +36,9 @@ window.RD_DATA = {
     alpha_by_beta: 1.5,
     D_q: 3.4833,
     D0: 0,
-    desc: "Calibrated from ten localized prostate radiotherapy prescriptions spanning 1.8 to 9.5 Gy per fraction. With α/β fixed at 1.5 Gy, minimizing the dispersion of RD EQD2 gave Dq = 3.4833 Gy, mean EQD2 = 75.59 Gy, sample SD = 2.96 Gy, 95% CI for the mean = 73.47–77.71 Gy, RSD = 3.92%, and η = 0.086%.",
-    source: "RD EQD2 Optimizer prostate prescription set",
-    url: "https://github.com/JoliverApps/RD_Dq_Optimizer/blob/374a92158390cba21dea3e5f7ecc06fc21fade7a/samples/prostate.csv",
+    desc: "Based on 10 localized prostate radiotherapy prescriptions spanning 1.8 to 9.5 Gy per fraction. Mean RD EQD2 = 75.59 Gy, sample SD = 2.96 Gy, 95% CI for the mean = 73.47–77.71 Gy, RSD = 3.92%, and η = 0.086%.",
+    source: "",
+    url: "",
     verified: true
   }
 };

@@ -16,8 +16,6 @@ For research and educational use. The application has not been validated for cli
 
 Use **Show Calculation Details** to view the reference BED, the inversion quantity K, and the Lambert-W value. Selecting a preset clears the schedule fields. Editing a tissue parameter clears the preset selection.
 
-![Unified BED Calculator](uBED_app_v2.png)
-
 ## Parameters and units
 
 | Input | Meaning | Units and allowed values |
@@ -74,8 +72,6 @@ python -m http.server 8000 --bind 127.0.0.1
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Keep the terminal running and refresh the browser after saving edits. Press Ctrl+C in the terminal to stop the preview.
 
-In Visual Studio, open the cloned folder with **File → Open → Folder**. Use **Git → Pull** to download updates and **Git Changes → Commit**, followed by **Push**, to upload saved changes.
-
 ## Troubleshooting
 
 | Problem | Action |
@@ -87,11 +83,9 @@ In Visual Studio, open the cloned folder with **File → Open → Folder**. Use 
 | Very small converted parameters become zero | Conversion fields retain six decimal places; use RD Params to enter small values directly. |
 | No result appears | Complete all required fields and resolve the validation message shown in the calculator. |
 
-## Reference and related tool
+## Model reference
 
 Oliveira JM. Resilience–depletion hypothesis: Unifying BED from conventional to ablative radiotherapy. *Medical Physics*. 2026;53:e70490. [doi:10.1002/mp.70490](https://doi.org/10.1002/mp.70490).
-
-[RD EQD2 Optimizer](https://github.com/JoliverApps/RD_Dq_Optimizer) estimates Dq by minimizing the dispersion of RD-derived EQD2 across a selected prescriptions set.
 
 ## License
 
