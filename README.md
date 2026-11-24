@@ -16,7 +16,7 @@ For research and educational use. The application has not been validated for cli
 
 Use **Show Calculation Details** to view the reference BED, the inversion quantity K, and the Lambert-W value. Selecting a preset clears the schedule fields. Editing a tissue parameter clears the preset selection.
 
-![Unified BED Calculator](uBED_app_v1.png)
+![Unified BED Calculator](uBED_app_v2.png)
 
 ## Prostate preset
 
