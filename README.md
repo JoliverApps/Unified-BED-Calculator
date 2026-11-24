@@ -18,6 +18,27 @@ Use **Show Calculation Details** to view the reference BED, the inversion quanti
 
 ![Unified BED Calculator](uBED_app_v1.png)
 
+## Prostate preset
+
+The prostate preset uses ten localized prostate radiotherapy prescriptions spanning 1.8 to 9.5 Gy per fraction. With α/β fixed at 1.5 Gy, the RD EQD2 Optimizer minimized the sum of squared EQD2 deviations from the mean. The fit gave Dq = 3.4833 Gy and RD parameters r = 0.8459 and s = 0.2429 Gy⁻¹.
+
+The mean RD EQD2 was 75.59 Gy, with a sample SD of 2.96 Gy and a 95% confidence interval for the mean of 73.47–77.71 Gy. The relative SD was 3.92%, and the relative EQD2 trend across the fractionation range (η) was 0.086%.
+
+| Prescription | Total dose (Gy) | Fractions |
+| --- | ---: | ---: |
+| Shared conventional reference | 78 | 39 |
+| RTOG 0126 IMRT | 79.2 | 44 |
+| GETUG 06 | 80 | 40 |
+| RTOG 0415 conventional | 73.8 | 41 |
+| RTOG 0415 hypofractionated | 70 | 28 |
+| PROFIT hypofractionated | 60 | 20 |
+| PACE-B control | 62 | 20 |
+| Mantz SBRT | 40 | 5 |
+| HYPO-RT-PC ultrahypofractionated | 42.7 | 7 |
+| Fuller SBRT | 38 | 4 |
+
+[Prostate calibration dataset (CSV)](https://github.com/JoliverApps/RD_Dq_Optimizer/blob/374a92158390cba21dea3e5f7ecc06fc21fade7a/samples/prostate.csv).
+
 ## Parameters and units
 
 | Input | Meaning | Units and allowed values |
